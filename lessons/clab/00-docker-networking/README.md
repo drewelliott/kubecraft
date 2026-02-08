@@ -1,154 +1,127 @@
-# Lesson 0: Docker Networking Fundamentals
+# Lesson 0: Container Networking -- Linux Under the Hood
 
-Bridge your DevOps knowledge to network-specific concepts.
+Understand the Linux primitives that make container networking work.
 
 ## Objectives
 
 By the end of this lesson, you will be able to:
 
-- [ ] Explain Docker network drivers and when to use each
-- [ ] Create and manage Docker networks
-- [ ] Understand how containers communicate
-- [ ] Inspect network configuration for troubleshooting
-- [ ] Use Docker Compose to define networks
+- [ ] Explain what happens at the Linux level when you run `docker run`
+- [ ] Identify network namespaces, veth pairs, and bridges on a Docker host
+- [ ] Manually create a container-style network using `ip netns`, bridges, and veth pairs
+- [ ] Configure NAT/masquerade to give namespaces internet access
+- [ ] Trace a packet's path from container to host and beyond
 
 ## Prerequisites
 
 - Docker installed and running
 - Basic Docker command experience (run, ps, exec)
 - Linux command line familiarity
+- Root/sudo access (required for namespace lab)
 
 ## Video Outline
 
-### 1. Why Docker Networking Matters (2 min)
+### 1. Opening -- What Happens When You Run `docker run`? (1 min)
 
-- Containers need to communicate
-- Different isolation requirements
-- Foundation for Kubernetes networking
-- Foundation for containerlab
+- Containers are not magic -- they use standard Linux kernel features
+- Every container gets its own network namespace
+- Docker creates veth pairs and a bridge to connect them
 
-### 2. Network Drivers Overview (3 min)
+### 2. Whiteboard -- The Architecture (2 min)
 
-| Driver | Use Case |
-|--------|----------|
-| `bridge` | Default, isolated container networks |
-| `host` | Container uses host network directly |
-| `none` | Complete network isolation |
-| `macvlan` | Container gets real MAC address |
-| `overlay` | Multi-host communication |
+Draw in Excalidraw:
+- Host network namespace with `docker0` bridge
+- Container namespaces connected via veth pairs
+- Each veth pair: one end in the container, one end on the bridge
 
-### 3. Bridge Networks Deep Dive (4 min)
+### 3. Docker Demo -- Inspect the Plumbing (4 min)
 
 ```bash
-# Default bridge
-docker network ls
+# Run two containers and inspect the components
+docker run -d --name c1 alpine sleep 3600
+docker run -d --name c2 alpine sleep 3600
+
+# On the host: find veth pairs and the bridge
+ip link show
+ip link show master docker0
+bridge link
+
+# Inside the container: see the other end
+docker exec c1 ip addr
+docker exec c1 ip route
+
+# Docker's view
 docker network inspect bridge
-
-# Custom bridge
-docker network create mynet
-docker run -d --name web --network mynet nginx
-docker run -d --name db --network mynet postgres
 ```
 
-- Custom bridges provide DNS resolution by container name
-- Default bridge only provides IP-based communication
-- Demonstrate container-to-container communication
-
-### 4. Network Namespaces (3 min)
+### 4. Manual Namespace Lab -- Build It from Scratch (5 min)
 
 ```bash
-# View container's network namespace
-docker inspect --format='{{.NetworkSettings.SandboxKey}}' container_name
-
-# Container has isolated:
-# - Interfaces
-# - Routes
-# - iptables rules
+# Create namespaces, a bridge, and veth pairs
+# Wire them together and test connectivity
+ip netns add red
+ip netns add blue
+ip link add br-study type bridge
+# ... (full commands in script.md)
 ```
 
-### 5. Port Mapping and Exposure (2 min)
+### 5. NAT/Masquerade -- Internet Access (2 min)
 
 ```bash
-# Publish port
-docker run -d -p 8080:80 nginx
-
-# Publish to specific interface
-docker run -d -p 127.0.0.1:8080:80 nginx
+# Enable forwarding and add masquerade rule
+sysctl -w net.ipv4.ip_forward=1
+iptables -t nat -A POSTROUTING -s 10.0.0.0/24 -o <host-iface> -j MASQUERADE
 ```
 
-### 6. Docker Compose Networking (3 min)
+### 6. Brief Note -- Docker Compose Creates Its Own Bridges (1 min)
 
-```yaml
-version: "3.8"
-services:
-  web:
-    image: nginx
-    networks:
-      - frontend
-  api:
-    image: node
-    networks:
-      - frontend
-      - backend
-  db:
-    image: postgres
-    networks:
-      - backend
+- Each Compose project gets a dedicated bridge network
+- Bonus exercise covers this
 
-networks:
-  frontend:
-  backend:
+### 7. Closing -- Bridge to Containerlab (1 min)
+
+- Containerlab uses these same Linux primitives
+- Next lesson: deploy real network operating systems
+
+## Lab Architecture
+
 ```
-
-### 7. Inspecting and Debugging (2 min)
-
-```bash
-# Network details
-docker network inspect mynet
-
-# Container network settings
-docker inspect web --format='{{json .NetworkSettings}}' | jq
-
-# Test connectivity
-docker exec web ping db
-```
-
-## Lab Topology
-
-```mermaid
-graph TB
-    subgraph "bridge: frontend"
-        web[nginx:web]
-        api[node:api]
-    end
-    subgraph "bridge: backend"
-        api
-        db[postgres:db]
-    end
-    web --> api
-    api --> db
+┌─────────────────────────────────────────────────────┐
+│  Host Network Namespace                             │
+│                                                     │
+│  ┌─────────────────────────────────┐                │
+│  │        docker0 / br-study       │                │
+│  │          (Linux bridge)         │                │
+│  └──────┬──────────────┬───────────┘                │
+│         │              │                            │
+│     veth-r-br      veth-b-br                        │
+│         │              │                            │
+│ ┌───────┴──────┐ ┌─────┴────────┐                   │
+│ │  Namespace:  │ │  Namespace:  │                   │
+│ │    red       │ │    blue      │                   │
+│ │  veth-r      │ │  veth-b     │                   │
+│ │  10.0.0.1/24 │ │  10.0.0.2/24│                   │
+│ └──────────────┘ └──────────────┘                   │
+└─────────────────────────────────────────────────────┘
 ```
 
 ## Key Concepts
 
-### Network Isolation
+### Network Namespaces
 
-- Containers on different networks cannot communicate (by default)
-- This is similar to VLANs in traditional networking
-- Containers can be connected to multiple networks
+A network namespace is an isolated copy of the network stack -- its own interfaces, routes, and iptables rules. Every Docker container runs inside one. You can create them manually with `ip netns add`.
 
-### DNS Resolution
+### Virtual Ethernet (veth) Pairs
 
-- Custom bridge networks provide automatic DNS
-- `ping db` works from `api` container
-- Container name = hostname
+A veth pair is a virtual cable: packets sent into one end come out the other. Docker uses them to connect a container's namespace to the host bridge. One end lives inside the container (as `eth0`), the other end is attached to the bridge on the host.
 
-### The Container Network Model (CNM)
+### Linux Bridges
 
-Docker's networking architecture:
-1. **Sandbox** - Network namespace with interfaces
-2. **Endpoint** - Virtual ethernet connecting sandbox to network
-3. **Network** - Group of endpoints that can communicate
+A Linux bridge works like a virtual network switch. Docker's `docker0` bridge connects all default-network containers so they can reach each other and the host. You can create bridges manually with `ip link add <name> type bridge`.
+
+### NAT / Masquerade
+
+For containers (or namespaces) to reach the internet, the host must forward packets and masquerade the source IP. Docker sets this up automatically with iptables rules. You can do the same manually with `iptables -t nat -A POSTROUTING ... -j MASQUERADE`.
 
 ## Exercises
 
@@ -156,10 +129,11 @@ Complete the exercises in [exercises/README.md](exercises/README.md).
 
 ## What's Next
 
-Now that you understand Docker networking, you're ready for [Lesson 1: Containerlab Primer](../01-containerlab-primer/) where we'll use these concepts to run network operating systems in containers.
+Now that you understand the Linux primitives under container networking, you're ready for [Lesson 1: Containerlab Primer](../01-containerlab-primer/) where we'll use these concepts to run actual network operating systems in containers.
 
 ## Additional Resources
 
+- [Network Namespaces man page](https://man7.org/linux/man-pages/man7/network_namespaces.7.html)
+- [veth man page](https://man7.org/linux/man-pages/man4/veth.4.html)
+- [ip-netns man page](https://man7.org/linux/man-pages/man8/ip-netns.8.html)
 - [Docker Networking Overview](https://docs.docker.com/network/)
-- [Docker Compose Networking](https://docs.docker.com/compose/networking/)
-- [Network Namespace Deep Dive](https://man7.org/linux/man-pages/man7/network_namespaces.7.html)

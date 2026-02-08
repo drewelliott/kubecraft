@@ -1,23 +1,11 @@
 services:
   web:
-    image: node:alpine
+    image: nginx:1.27-alpine
     networks:
-      - frontend
+      - default
 
-  api:
-    image: node:alpine
+  client:
+    image: alpine:3.20
     command: sleep 3600
     networks:
-      - frontend
-      - backend
-
-  db:
-    image: postgres:alpine
-    environment:
-      POSTGRES_PASSWORD: example
-    networks:
-      - backend
-
-networks:
-  frontend:
-  backend:
+      - default

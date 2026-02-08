@@ -17,16 +17,34 @@ kubecraft/
 ├── lessons/
 │   └── clab/                # Containerlab training series
 │       ├── XX-lesson-name/  # Individual lessons
-│       │   ├── README.md
-│       │   ├── topology/
-│       │   ├── exercises/
-│       │   ├── solutions/
-│       │   ├── tests/
-│       │   └── script.md    # Video script
+│       │   ├── README.md    # Student-facing
+│       │   ├── topology/    # Student-facing
+│       │   ├── exercises/   # Student-facing
+│       │   ├── solutions/   # Student-facing
+│       │   ├── tests/       # Student-facing
+│       │   └── script.md    # Instructor-only (video script)
 │       ├── COURSE_PLAN.md
 │       └── VIDEO_SCRIPT_TEMPLATE.md
 └── CLAUDE.md                # This file
 ```
+
+## Content Audience Convention
+
+The `main` branch contains both student-facing and instructor-only content. The convention:
+
+**Student-facing** (what students interact with after forking):
+- `README.md` -- Lesson overview, objectives, key concepts
+- `topology/` -- Containerlab topology files
+- `exercises/` -- Hands-on exercises
+- `solutions/` -- Exercise solutions (intentionally visible)
+- `tests/` -- Automated validation
+
+**Instructor-only** (video production and personal notes):
+- `script.md` -- Video recording script
+- `COURSE_PLAN.md` -- Course-level planning
+- `VIDEO_SCRIPT_TEMPLATE.md` -- Template for scripts
+
+Students fork the repo and work through lessons in order. Instructor-only files are present in the fork but students are not directed to them.
 
 ## Git Workflow
 

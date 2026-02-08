@@ -1,277 +1,280 @@
-# Lesson 0 Exercises: Docker Networking
+# Lesson 0 Exercises: Container Networking -- Linux Under the Hood
 
-Complete these exercises to reinforce your Docker networking knowledge.
+Complete these exercises to reinforce your understanding of the Linux primitives under container networking.
 
-## Exercise 1: Explore Default Networking
+## Exercise 1: Inspect Docker's Network Plumbing
 
-**Objective:** Understand the default bridge network behavior.
+**Objective:** Trace the Linux components Docker creates when you run containers.
 
 ### Steps
 
-1. Run two containers on the default network:
+1. Start two containers on the default bridge:
    ```bash
-   docker run -d --name container1 alpine sleep 3600
-   docker run -d --name container2 alpine sleep 3600
+   docker run -d --name c1 alpine sleep 3600
+   docker run -d --name c2 alpine sleep 3600
    ```
 
-2. Get their IP addresses:
+2. Find the `docker0` bridge on the host:
    ```bash
-   docker inspect container1 --format='{{.NetworkSettings.IPAddress}}'
-   docker inspect container2 --format='{{.NetworkSettings.IPAddress}}'
+   ip link show docker0
    ```
 
-3. Try to ping by IP (should work):
+3. List all interfaces attached to `docker0`:
    ```bash
-   docker exec container1 ping -c 2 <container2-ip>
+   ip link show master docker0
+   ```
+   Note the veth names and the `@ifN` index numbers.
+
+4. Look inside container `c1` and find the other end of the veth pair:
+   ```bash
+   docker exec c1 ip addr
+   ```
+   Compare the `@ifN` index to what you saw on the host.
+
+5. Check the container's routing table:
+   ```bash
+   docker exec c1 ip route
    ```
 
-4. Try to ping by name (should fail):
+6. Verify with Docker's own view:
    ```bash
-   docker exec container1 ping -c 2 container2
+   docker network inspect bridge
    ```
 
 ### Questions
 
-- Why does ping by name fail on the default bridge?
-- What IP range does the default bridge use?
+- What is the IP of the `docker0` bridge? How does it relate to the container's default gateway?
+- How can you match a host-side veth to its container-side eth0? (Hint: look at the `@ifN` indexes)
+- What subnet does Docker use for the default bridge?
 
 ### Cleanup
+
 ```bash
-docker rm -f container1 container2
+docker rm -f c1 c2
 ```
 
 ---
 
-## Exercise 2: Custom Bridge Network
+## Exercise 2: Build a Container Network from Scratch
 
-**Objective:** Create a custom network with DNS resolution.
+**Objective:** Manually create a namespace-based network using bridges and veth pairs -- the same primitives Docker uses.
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────┐
+│  Host                                               │
+│                                                     │
+│  ┌─────────────────────────────────┐                │
+│  │         br-study                │                │
+│  │       10.0.0.254/24            │                │
+│  └──────┬──────────────┬───────────┘                │
+│     veth-r-br       veth-b-br                       │
+│         │              │                            │
+│ ┌───────┴──────┐ ┌─────┴────────┐                   │
+│ │   red        │ │   blue       │                   │
+│ │   veth-r     │ │   veth-b     │                   │
+│ │ 10.0.0.1/24  │ │ 10.0.0.2/24 │                   │
+│ └──────────────┘ └──────────────┘                   │
+└─────────────────────────────────────────────────────┘
+```
 
 ### Steps
 
-1. Create a custom network:
+1. Create two network namespaces:
    ```bash
-   docker network create lab-network
+   sudo ip netns add red
+   sudo ip netns add blue
    ```
 
-2. Run containers on your custom network:
+2. Verify they exist:
    ```bash
-   docker run -d --name web --network lab-network nginx
-   docker run -d --name client --network lab-network alpine sleep 3600
+   sudo ip netns list
    ```
 
-3. Test DNS resolution:
+3. Create a Linux bridge and assign it an IP:
    ```bash
-   docker exec client ping -c 2 web
+   sudo ip link add br-study type bridge
+   sudo ip link set br-study up
+   sudo ip addr add 10.0.0.254/24 dev br-study
    ```
 
-4. Test HTTP connectivity:
+4. Create veth pairs and wire up the **red** namespace:
    ```bash
-   docker exec client wget -qO- http://web
+   sudo ip link add veth-r type veth peer name veth-r-br
+   sudo ip link set veth-r netns red
+   sudo ip link set veth-r-br master br-study
+   sudo ip link set veth-r-br up
    ```
 
-5. Inspect the network:
+5. Create veth pairs and wire up the **blue** namespace:
    ```bash
-   docker network inspect lab-network
+   sudo ip link add veth-b type veth peer name veth-b-br
+   sudo ip link set veth-b netns blue
+   sudo ip link set veth-b-br master br-study
+   sudo ip link set veth-b-br up
+   ```
+
+6. Configure IPs and bring interfaces up inside each namespace:
+   ```bash
+   # Red
+   sudo ip netns exec red ip addr add 10.0.0.1/24 dev veth-r
+   sudo ip netns exec red ip link set veth-r up
+   sudo ip netns exec red ip link set lo up
+
+   # Blue
+   sudo ip netns exec blue ip addr add 10.0.0.2/24 dev veth-b
+   sudo ip netns exec blue ip link set veth-b up
+   sudo ip netns exec blue ip link set lo up
+   ```
+
+7. Test connectivity:
+   ```bash
+   # Red to blue
+   sudo ip netns exec red ping -c 3 10.0.0.2
+
+   # Blue to red
+   sudo ip netns exec blue ping -c 3 10.0.0.1
+
+   # Either namespace to the bridge gateway
+   sudo ip netns exec red ping -c 2 10.0.0.254
    ```
 
 ### Questions
 
-- What gateway IP does your custom network use?
-- What subnet was assigned?
-- How is this different from the default bridge?
+- What happens if you skip bringing up the loopback (`lo`)? Try it and see.
+- What do you see when you run `ip link show master br-study` on the host?
+- How is this different from what Docker does with `docker0`?
 
 ### Cleanup
+
 ```bash
-docker rm -f web client
-docker network rm lab-network
+sudo ip netns del red
+sudo ip netns del blue
+sudo ip link del br-study
 ```
 
 ---
 
-## Exercise 3: Multi-Network Container
+## Exercise 3: Enable Internet Access (NAT)
 
-**Objective:** Connect a container to multiple networks.
+**Objective:** Add NAT/masquerade rules so your manual namespaces can reach the internet, just like Docker containers.
+
+### Prerequisites
+
+Complete Exercise 2 first (namespaces, bridge, and veth pairs must be in place). If you already cleaned up, re-run the Exercise 2 steps before continuing.
 
 ### Steps
 
-1. Create two networks:
+1. First, find your host's outbound interface:
    ```bash
-   docker network create frontend
-   docker network create backend
+   ip route show default
+   ```
+   Note the interface name after `dev` (e.g., `eth0`, `enp0s3`, `wlan0`).
+
+2. Add default routes in each namespace so they send non-local traffic to the bridge:
+   ```bash
+   sudo ip netns exec red ip route add default via 10.0.0.254
+   sudo ip netns exec blue ip route add default via 10.0.0.254
    ```
 
-2. Create containers:
+3. Enable IP forwarding on the host:
    ```bash
-   docker run -d --name webserver --network frontend nginx
-   docker run -d --name database --network backend alpine sleep 3600
-   docker run -d --name appserver --network frontend alpine sleep 3600
+   sudo sysctl -w net.ipv4.ip_forward=1
    ```
 
-3. Connect appserver to backend as well:
+4. Add a masquerade rule (replace `eth0` with your actual interface from step 1):
    ```bash
-   docker network connect backend appserver
+   sudo iptables -t nat -A POSTROUTING -s 10.0.0.0/24 -o eth0 -j MASQUERADE
    ```
 
-4. Test connectivity from appserver:
+5. Test internet access from the namespaces:
    ```bash
-   # Should work (both on frontend)
-   docker exec appserver ping -c 2 webserver
-
-   # Should work (both on backend)
-   docker exec appserver ping -c 2 database
+   sudo ip netns exec red ping -c 3 8.8.8.8
+   sudo ip netns exec blue ping -c 3 1.1.1.1
    ```
 
-5. Test connectivity from webserver to database:
+6. Inspect Docker's own NAT rules for comparison:
    ```bash
-   # Should fail (different networks)
-   docker exec webserver ping -c 2 database
+   sudo iptables -t nat -L POSTROUTING -v
    ```
 
 ### Questions
 
-- Why can appserver reach both webserver and database?
-- How many network interfaces does appserver have?
-- Check with: `docker exec appserver ip addr`
-
-### Diagram Your Setup
-
-Create a simple diagram showing the network topology.
+- What does the masquerade rule actually do to each packet?
+- Why do we need IP forwarding enabled?
+- Can you find Docker's masquerade rule for the 172.17.0.0/16 subnet?
 
 ### Cleanup
+
 ```bash
-docker rm -f webserver appserver database
-docker network rm frontend backend
+sudo ip netns del red
+sudo ip netns del blue
+sudo ip link del br-study
+sudo iptables -t nat -D POSTROUTING -s 10.0.0.0/24 -o eth0 -j MASQUERADE
 ```
 
 ---
 
-## Exercise 4: Docker Compose Networking
+## Bonus Exercise: Docker Compose Networking
 
-**Objective:** Define networks declaratively with Docker Compose.
+**Objective:** See how Docker Compose creates its own bridge network (separate from docker0).
 
 ### Steps
 
-1. Create a file `docker-compose.yml`:
-   ```yaml
-   version: "3.8"
-
-   services:
-     web:
-       image: nginx
-       networks:
-         - public
-
-     api:
-       image: alpine
-       command: sleep 3600
-       networks:
-         - public
-         - internal
-
-     db:
-       image: alpine
-       command: sleep 3600
-       networks:
-         - internal
-
-   networks:
-     public:
-     internal:
-   ```
+1. Look at the provided `compose.yaml` in this directory.
 
 2. Start the stack:
    ```bash
    docker compose up -d
    ```
 
-3. Test connectivity:
+3. List Docker networks and find the one Compose created:
    ```bash
-   # api can reach web
-   docker compose exec api ping -c 2 web
-
-   # api can reach db
-   docker compose exec api ping -c 2 db
-
-   # web cannot reach db
-   docker compose exec web ping -c 2 db
+   docker network ls
    ```
 
-4. List the networks created:
+4. Inspect the Compose network:
    ```bash
-   docker network ls | grep -E "public|internal"
+   docker network inspect exercises_default
    ```
 
-### Questions
+5. Find the Linux bridge backing the Compose network:
+   ```bash
+   ip link show type bridge
+   ```
+   You should see a new bridge in addition to `docker0`.
 
-- What naming convention does Compose use for networks?
-- How would you expose the web service on port 8080?
+6. Test that containers can reach each other by name:
+   ```bash
+   docker compose exec client ping -c 2 web
+   ```
+
+7. Verify with `ip link show master <bridge-name>` to see the veth pairs -- same primitives as docker0.
 
 ### Cleanup
+
 ```bash
 docker compose down
 ```
 
 ---
 
-## Exercise 5: Challenge - Network Debugging
-
-**Objective:** Practice debugging network connectivity issues.
-
-### Scenario
-
-A colleague set up containers but they can't communicate. Debug and fix the issue.
-
-### Setup (Run This Exactly)
-
-```bash
-docker network create app-network
-docker run -d --name broken-web nginx
-docker run -d --name broken-client --network app-network alpine sleep 3600
-```
-
-### Your Task
-
-1. Identify why `broken-client` cannot reach `broken-web`
-2. Fix the issue without recreating the containers
-3. Verify connectivity works
-
-### Hints
-
-- Check which network each container is on
-- Remember: `docker network connect`
-
-### Solution Check
-
-```bash
-docker exec broken-client wget -qO- http://broken-web
-```
-
-If you see HTML output, you've fixed it!
-
-### Cleanup
-```bash
-docker rm -f broken-web broken-client
-docker network rm app-network
-```
-
----
-
 ## Validation
 
-Run the automated tests to verify your understanding:
+Run the automated tests to verify your work:
 
 ```bash
-cd /workspaces/kubecraft/lessons/clab/00-docker-networking
-pytest tests/
+cd lessons/clab/00-docker-networking
+pytest tests/ -v
 ```
 
 ## Completion Checklist
 
-- [ ] Exercise 1: Explored default bridge
-- [ ] Exercise 2: Created custom network with DNS
-- [ ] Exercise 3: Connected container to multiple networks
-- [ ] Exercise 4: Used Docker Compose for networking
-- [ ] Exercise 5: Debugged network connectivity issue
+- [ ] Exercise 1: Inspected Docker's bridge, veth pairs, and container networking
+- [ ] Exercise 2: Built a namespace network from scratch with ping working
+- [ ] Exercise 3: Enabled NAT and reached the internet from a namespace
+- [ ] Bonus: Explored Docker Compose's bridge network
 
 ## Next Steps
 

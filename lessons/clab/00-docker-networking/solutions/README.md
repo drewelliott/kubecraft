@@ -1,120 +1,246 @@
 # Lesson 0 Solutions
 
-Reference solutions for the Docker Networking exercises.
+Reference solutions for the Container Networking exercises.
 
-## Exercise 1: Default Bridge Answers
+## Exercise 1: Inspect Docker's Network Plumbing
 
-**Why does ping by name fail?**
-The default bridge network does NOT provide automatic DNS resolution. Only custom bridge networks have the embedded DNS server that resolves container names.
+**What is the IP of docker0? How does it relate to the default gateway?**
 
-**Default bridge IP range:**
-Typically `172.17.0.0/16`. The gateway is usually `172.17.0.1`.
+The `docker0` bridge is typically `172.17.0.1`. Inside each container, `ip route` shows this as the default gateway:
+
+```
+default via 172.17.0.1 dev eth0
+172.17.0.0/16 dev eth0 scope link src 172.17.0.2
+```
+
+The bridge IS the gateway -- packets from containers destined outside the subnet go to `docker0`, and the host routes them.
+
+**How to match a host-side veth to its container-side eth0:**
+
+The `@ifN` index on each end references the other end. For example:
+- On the host: `vethXXXXXXX@if5` -- the `if5` means interface index 5 is the other end
+- In the container: `5: eth0@if6` -- the `if6` means interface index 6 is the host end
+
+You can verify with:
+```bash
+# On the host
+ip link show master docker0
+```
+
+```
+6: veth1234567@if5: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 ...
+    master docker0 state UP
+```
+
+```bash
+# In the container
+docker exec c1 ip addr
+```
+
+```
+5: eth0@if6: <BROADCAST,MULTICAST,UP,LOWER_UP> ...
+    inet 172.17.0.2/16 scope global eth0
+```
+
+Interface index 6 on the host matches veth1234567, and interface index 5 in the container matches eth0. They are a pair.
+
+**Default bridge subnet:** Typically `172.17.0.0/16`.
 
 ---
 
-## Exercise 2: Custom Bridge Answers
+## Exercise 2: Build a Container Network from Scratch
 
-**Gateway IP:** Typically `172.18.0.1` (or next available 172.x.0.1)
+### Complete command sequence
 
-**Subnet:** Usually a /16 like `172.18.0.0/16`
+```bash
+# 1. Create namespaces
+sudo ip netns add red
+sudo ip netns add blue
 
-**Difference from default bridge:**
-- Automatic DNS resolution (can ping by name)
-- Better isolation (only containers explicitly added can communicate)
-- User-defined, so you control the configuration
+# 2. Verify
+sudo ip netns list
+```
+
+**Expected output:**
+```
+blue
+red
+```
+
+```bash
+# 3. Create bridge
+sudo ip link add br-study type bridge
+sudo ip link set br-study up
+sudo ip addr add 10.0.0.254/24 dev br-study
+
+# 4. Wire up red namespace
+sudo ip link add veth-r type veth peer name veth-r-br
+sudo ip link set veth-r netns red
+sudo ip link set veth-r-br master br-study
+sudo ip link set veth-r-br up
+
+# 5. Wire up blue namespace
+sudo ip link add veth-b type veth peer name veth-b-br
+sudo ip link set veth-b netns blue
+sudo ip link set veth-b-br master br-study
+sudo ip link set veth-b-br up
+
+# 6. Configure IPs
+sudo ip netns exec red ip addr add 10.0.0.1/24 dev veth-r
+sudo ip netns exec red ip link set veth-r up
+sudo ip netns exec red ip link set lo up
+
+sudo ip netns exec blue ip addr add 10.0.0.2/24 dev veth-b
+sudo ip netns exec blue ip link set veth-b up
+sudo ip netns exec blue ip link set lo up
+```
+
+```bash
+# 7. Test connectivity
+sudo ip netns exec red ping -c 3 10.0.0.2
+```
+
+**Expected output:**
+```
+PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
+64 bytes from 10.0.0.2: icmp_seq=1 ttl=64 time=0.050 ms
+64 bytes from 10.0.0.2: icmp_seq=2 ttl=64 time=0.040 ms
+64 bytes from 10.0.0.2: icmp_seq=3 ttl=64 time=0.038 ms
+
+--- 10.0.0.2 ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 2003ms
+```
+
+```bash
+sudo ip netns exec red ping -c 2 10.0.0.254
+```
+
+**Expected output:**
+```
+PING 10.0.0.254 (10.0.0.254) 56(84) bytes of data.
+64 bytes from 10.0.0.254: icmp_seq=1 ttl=64 time=0.030 ms
+64 bytes from 10.0.0.254: icmp_seq=2 ttl=64 time=0.028 ms
+```
+
+### Answers to questions
+
+**What happens if you skip bringing up loopback?**
+
+Most things still work, but some applications that bind to localhost or use loopback for internal communication will fail. It's good practice to always bring it up.
+
+**What does `ip link show master br-study` show?**
+
+```
+3: veth-r-br: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 ...
+    master br-study state UP
+4: veth-b-br: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 ...
+    master br-study state UP
+```
+
+The two host-side veth interfaces attached to the bridge -- exactly like `ip link show master docker0` shows Docker's veth pairs.
+
+**How is this different from Docker?**
+
+It's the same primitives. Docker automates:
+- Namespace creation (one per container)
+- Bridge creation (`docker0`)
+- veth pair creation and attachment
+- IP assignment (via IPAM)
+- Route configuration
+- iptables rules for NAT
+
+We did all of these steps manually.
 
 ---
 
-## Exercise 3: Multi-Network Answers
+## Exercise 3: Enable Internet Access (NAT)
 
-**Why can appserver reach both?**
-Appserver is connected to BOTH the frontend and backend networks. It has interfaces on each network, so it can route to containers on either.
+### Complete command sequence
 
-**Number of interfaces:**
-Three:
-1. `lo` - loopback (always present)
-2. `eth0` - frontend network
-3. `eth1` - backend network (added by `docker network connect`)
-
-Verify:
 ```bash
-docker exec appserver ip addr
+# 1. Find outbound interface
+ip route show default
 ```
 
-**Topology diagram:**
-
+**Expected output (varies by system):**
 ```
-┌─────────────────────────────────────────┐
-│           frontend network              │
-│  ┌───────────┐      ┌───────────┐       │
-│  │ webserver │      │ appserver │       │
-│  └───────────┘      └─────┬─────┘       │
-└───────────────────────────┼─────────────┘
-                            │
-┌───────────────────────────┼─────────────┐
-│           backend network │             │
-│                     ┌─────┴─────┐       │
-│                     │ appserver │       │
-│                     └───────────┘       │
-│  ┌───────────┐                          │
-│  │ database  │                          │
-│  └───────────┘                          │
-└─────────────────────────────────────────┘
+default via 192.168.1.1 dev eth0 proto dhcp metric 100
 ```
 
----
+The interface is `eth0` (use whatever your system shows).
 
-## Exercise 4: Docker Compose Answers
-
-**Compose network naming convention:**
-`<project>_<network-name>`
-
-If your directory is `00-docker-networking`, networks will be:
-- `00-docker-networking_public`
-- `00-docker-networking_internal`
-
-**Exposing web on port 8080:**
-
-```yaml
-services:
-  web:
-    image: nginx
-    ports:
-      - "8080:80"
-    networks:
-      - public
-```
-
----
-
-## Exercise 5: Challenge Solution
-
-**Problem identification:**
-`broken-web` is on the default bridge network, while `broken-client` is on `app-network`. They're on different networks and cannot communicate.
-
-**Fix:**
 ```bash
-docker network connect app-network broken-web
+# 2. Add default routes
+sudo ip netns exec red ip route add default via 10.0.0.254
+sudo ip netns exec blue ip route add default via 10.0.0.254
+
+# 3. Enable IP forwarding
+sudo sysctl -w net.ipv4.ip_forward=1
 ```
 
-**Verification:**
+**Expected output:**
+```
+net.ipv4.ip_forward = 1
+```
+
 ```bash
-docker exec broken-client wget -qO- http://broken-web
+# 4. Add masquerade rule (replace eth0 with your interface)
+sudo iptables -t nat -A POSTROUTING -s 10.0.0.0/24 -o eth0 -j MASQUERADE
 ```
 
-**Alternative fix (also valid):**
 ```bash
-docker network connect bridge broken-client
+# 5. Test internet access
+sudo ip netns exec red ping -c 3 8.8.8.8
 ```
 
-Then use the IP address since default bridge doesn't have DNS.
+**Expected output:**
+```
+PING 8.8.8.8 (8.8.8.8) 56(84) bytes of data.
+64 bytes from 8.8.8.8: icmp_seq=1 ttl=117 time=10.2 ms
+64 bytes from 8.8.8.8: icmp_seq=2 ttl=117 time=9.8 ms
+64 bytes from 8.8.8.8: icmp_seq=3 ttl=117 time=9.9 ms
+```
+
+```bash
+# 6. Compare with Docker's rules
+sudo iptables -t nat -L POSTROUTING -v
+```
+
+**Expected output (relevant lines):**
+```
+Chain POSTROUTING (policy ACCEPT)
+ pkts bytes target     prot opt in     out     source               destination
+    3   252 MASQUERADE  all  --  any    eth0    10.0.0.0/24          anywhere
+    0     0 MASQUERADE  all  --  any    !docker0  172.17.0.0/16        anywhere
+```
+
+Docker's rule looks almost identical to ours -- masquerade traffic from its subnet going out any interface except docker0.
+
+### Answers to questions
+
+**What does the masquerade rule do?**
+
+It rewrites the source IP address of outbound packets from 10.0.0.x to the host's IP on the outbound interface. When the reply comes back, the kernel automatically translates the destination IP back to the original namespace IP. This is Source NAT (SNAT) -- the same thing your home router does.
+
+**Why do we need IP forwarding?**
+
+Without `net.ipv4.ip_forward=1`, the Linux kernel drops any packet that arrives on one interface but is destined for another. It only processes packets addressed to its own IPs. IP forwarding tells the kernel to act as a router and forward packets between interfaces.
+
+**Docker's masquerade rule:**
+
+Docker creates a rule like:
+```
+MASQUERADE  all  --  anywhere  anywhere  source: 172.17.0.0/16  ! out: docker0
+```
+
+This masquerades traffic from containers (172.17.0.0/16) going out any interface except docker0 itself. Traffic between containers stays on the bridge and doesn't need NAT.
 
 ---
 
 ## Key Takeaways
 
-1. **Default bridge has no DNS** - Use custom networks for name resolution
-2. **Networks provide isolation** - Containers on different networks can't talk (without explicit connection)
-3. **Containers can join multiple networks** - Useful for services that bridge concerns
-4. **Docker Compose manages networks** - Declarative approach, automatic DNS within the compose project
-5. **`docker network connect`** - Add containers to networks without restarting
+1. **Network namespaces** are what isolate container networking -- each container gets its own
+2. **veth pairs** are virtual cables connecting namespaces to bridges
+3. **Linux bridges** are virtual switches that connect multiple veth pairs
+4. **NAT/masquerade** rewrites source IPs so namespace traffic can reach the internet
+5. Docker automates all of this -- understanding the primitives helps you debug and build beyond Docker

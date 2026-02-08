@@ -1,35 +1,50 @@
 """
-Lesson 0: Docker Networking - Validation Tests
+Lesson 0: Container Networking -- Linux Under the Hood - Validation Tests
 
 Run with: pytest tests/test_docker_networking.py -v
+
+These tests validate the exercises:
+- Exercise 1: Docker's bridge, veth pairs, container networking
+- Exercise 2: Manual namespace lab (red/blue with br-study)
+- Exercise 3: NAT/masquerade for internet access
 """
 
 import subprocess
-import json
 import pytest
 
 
-def run_docker(cmd: str) -> str:
-    """Run a docker command and return output."""
-    result = subprocess.run(
-        f"docker {cmd}",
+def run_cmd(cmd: str) -> subprocess.CompletedProcess:
+    """Run a shell command and return the CompletedProcess."""
+    return subprocess.run(
+        cmd,
         shell=True,
         capture_output=True,
-        text=True
+        text=True,
     )
+
+
+def run_docker(cmd: str) -> str:
+    """Run a docker command and return stdout."""
+    result = run_cmd(f"docker {cmd}")
     return result.stdout.strip()
 
 
-def docker_exists(name: str) -> bool:
-    """Check if a container exists."""
-    result = run_docker(f"ps -a --filter name={name} --format '{{{{.Names}}}}'")
-    return name in result
-
-
 def network_exists(name: str) -> bool:
-    """Check if a network exists."""
-    result = run_docker(f"network ls --filter name={name} --format '{{{{.Name}}}}'")
+    """Check if a Docker network exists."""
+    result = run_docker(f"network ls --filter name=^{name}$ --format '{{{{.Name}}}}'")
     return name in result
+
+
+def netns_exists(name: str) -> bool:
+    """Check if a network namespace exists."""
+    result = run_cmd(f"sudo ip netns list")
+    return name in result.stdout
+
+
+def link_exists(name: str) -> bool:
+    """Check if a network interface exists on the host."""
+    result = run_cmd(f"ip link show {name}")
+    return result.returncode == 0
 
 
 class TestDockerBasics:
@@ -37,173 +52,156 @@ class TestDockerBasics:
 
     def test_docker_available(self):
         """Docker CLI should be available."""
-        result = subprocess.run(
-            "docker --version",
-            shell=True,
-            capture_output=True,
-            text=True
-        )
+        result = run_cmd("docker --version")
         assert result.returncode == 0
         assert "Docker version" in result.stdout
 
     def test_docker_running(self):
         """Docker daemon should be running."""
-        result = subprocess.run(
-            "docker info",
-            shell=True,
-            capture_output=True,
-            text=True
-        )
+        result = run_cmd("docker info")
         assert result.returncode == 0
 
 
 class TestDefaultBridge:
-    """Test understanding of default bridge network."""
+    """Test understanding of default bridge network (Exercise 1)."""
 
     def test_default_bridge_exists(self):
         """Default bridge network should exist."""
         assert network_exists("bridge")
 
     def test_default_bridge_subnet(self):
-        """Default bridge should have expected subnet."""
+        """Default bridge should have a 172.x subnet."""
         result = run_docker("network inspect bridge --format '{{.IPAM.Config}}'")
-        # Should contain a 172.17.x.x subnet typically
-        assert "172." in result or "Subnet" in result
+        assert "172." in result
+
+    def test_docker0_interface_exists(self):
+        """docker0 bridge interface should exist on the host."""
+        assert link_exists("docker0")
+
+    def test_docker0_is_bridge(self):
+        """docker0 should be a bridge type interface."""
+        result = run_cmd("ip -d link show docker0")
+        assert "bridge" in result.stdout
 
 
-class TestCustomNetwork:
-    """Test custom network creation."""
+class TestNamespaceLab:
+    """Test manual namespace lab setup (Exercise 2).
 
-    @pytest.fixture(autouse=True)
-    def setup_teardown(self):
-        """Create and cleanup test network."""
-        run_docker("network create test-validation-net 2>/dev/null || true")
-        yield
-        run_docker("network rm test-validation-net 2>/dev/null || true")
+    These tests verify that students have created the red/blue namespaces
+    with br-study bridge and veth pairs, as described in the exercise.
+    """
 
-    def test_can_create_network(self):
-        """Should be able to create custom network."""
-        assert network_exists("test-validation-net")
-
-    def test_custom_network_has_driver(self):
-        """Custom network should use bridge driver."""
-        result = run_docker(
-            "network inspect test-validation-net --format '{{.Driver}}'"
-        )
-        assert result == "bridge"
-
-
-class TestNetworkCommunication:
-    """Test container communication scenarios."""
-
-    @pytest.fixture(autouse=True)
-    def setup_teardown(self):
-        """Create test environment."""
-        # Create network
-        run_docker("network create comm-test-net 2>/dev/null || true")
-
-        # Create containers
-        run_docker(
-            "run -d --name comm-test-1 --network comm-test-net "
-            "alpine sleep 300 2>/dev/null || true"
-        )
-        run_docker(
-            "run -d --name comm-test-2 --network comm-test-net "
-            "alpine sleep 300 2>/dev/null || true"
+    def test_red_namespace_exists(self):
+        """Red network namespace should exist."""
+        assert netns_exists("red"), (
+            "Namespace 'red' not found. "
+            "Create it with: sudo ip netns add red"
         )
 
-        yield
-
-        # Cleanup
-        run_docker("rm -f comm-test-1 comm-test-2 2>/dev/null || true")
-        run_docker("network rm comm-test-net 2>/dev/null || true")
-
-    def test_containers_can_ping_by_name(self):
-        """Containers on custom network should resolve names."""
-        result = subprocess.run(
-            "docker exec comm-test-1 ping -c 1 comm-test-2",
-            shell=True,
-            capture_output=True,
-            text=True
-        )
-        assert result.returncode == 0
-        assert "1 packets transmitted, 1 packets received" in result.stdout \
-            or "1 received" in result.stdout
-
-
-class TestMultipleNetworks:
-    """Test multi-network scenarios."""
-
-    @pytest.fixture(autouse=True)
-    def setup_teardown(self):
-        """Create multi-network test environment."""
-        run_docker("network create multi-net-1 2>/dev/null || true")
-        run_docker("network create multi-net-2 2>/dev/null || true")
-        run_docker(
-            "run -d --name multi-test-container --network multi-net-1 "
-            "alpine sleep 300 2>/dev/null || true"
+    def test_blue_namespace_exists(self):
+        """Blue network namespace should exist."""
+        assert netns_exists("blue"), (
+            "Namespace 'blue' not found. "
+            "Create it with: sudo ip netns add blue"
         )
 
-        yield
-
-        run_docker("rm -f multi-test-container 2>/dev/null || true")
-        run_docker("network rm multi-net-1 multi-net-2 2>/dev/null || true")
-
-    def test_can_connect_to_additional_network(self):
-        """Container should be able to join multiple networks."""
-        # Connect to second network
-        run_docker("network connect multi-net-2 multi-test-container")
-
-        # Inspect container networks
-        result = run_docker(
-            "inspect multi-test-container "
-            "--format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}'"
+    def test_bridge_exists(self):
+        """br-study bridge should exist."""
+        assert link_exists("br-study"), (
+            "Bridge 'br-study' not found. "
+            "Create it with: sudo ip link add br-study type bridge"
         )
 
-        assert "multi-net-1" in result
-        assert "multi-net-2" in result
-
-
-class TestNetworkIsolation:
-    """Test that network isolation works correctly."""
-
-    @pytest.fixture(autouse=True)
-    def setup_teardown(self):
-        """Create isolated network test environment."""
-        run_docker("network create iso-net-1 2>/dev/null || true")
-        run_docker("network create iso-net-2 2>/dev/null || true")
-        run_docker(
-            "run -d --name iso-container-1 --network iso-net-1 "
-            "alpine sleep 300 2>/dev/null || true"
-        )
-        run_docker(
-            "run -d --name iso-container-2 --network iso-net-2 "
-            "alpine sleep 300 2>/dev/null || true"
+    def test_bridge_has_ip(self):
+        """br-study should have IP 10.0.0.254/24."""
+        result = run_cmd("ip addr show br-study")
+        assert "10.0.0.254/24" in result.stdout, (
+            "br-study does not have IP 10.0.0.254/24. "
+            "Set it with: sudo ip addr add 10.0.0.254/24 dev br-study"
         )
 
-        yield
-
-        run_docker("rm -f iso-container-1 iso-container-2 2>/dev/null || true")
-        run_docker("network rm iso-net-1 iso-net-2 2>/dev/null || true")
-
-    def test_containers_on_different_networks_isolated(self):
-        """Containers on different networks should not communicate."""
-        # Get IP of container-2
-        ip = run_docker(
-            "inspect iso-container-2 "
-            "--format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'"
+    def test_veth_pairs_on_bridge(self):
+        """veth-r-br and veth-b-br should be attached to br-study."""
+        result = run_cmd("ip link show master br-study")
+        assert "veth-r-br" in result.stdout, (
+            "veth-r-br not found on br-study"
+        )
+        assert "veth-b-br" in result.stdout, (
+            "veth-b-br not found on br-study"
         )
 
-        # Try to ping (should fail)
-        result = subprocess.run(
-            f"docker exec iso-container-1 ping -c 1 -W 2 {ip}",
-            shell=True,
-            capture_output=True,
-            text=True
+    def test_red_namespace_has_ip(self):
+        """Red namespace veth-r should have IP 10.0.0.1/24."""
+        result = run_cmd("sudo ip netns exec red ip addr show veth-r")
+        assert "10.0.0.1/24" in result.stdout, (
+            "veth-r in red namespace does not have IP 10.0.0.1/24"
         )
 
-        # Should timeout or have 100% packet loss
-        assert result.returncode != 0 or "100% packet loss" in result.stdout
+    def test_blue_namespace_has_ip(self):
+        """Blue namespace veth-b should have IP 10.0.0.2/24."""
+        result = run_cmd("sudo ip netns exec blue ip addr show veth-b")
+        assert "10.0.0.2/24" in result.stdout, (
+            "veth-b in blue namespace does not have IP 10.0.0.2/24"
+        )
+
+    def test_red_can_ping_blue(self):
+        """Red namespace should be able to ping blue (10.0.0.2)."""
+        result = run_cmd("sudo ip netns exec red ping -c 1 -W 3 10.0.0.2")
+        assert result.returncode == 0, (
+            "Red cannot ping blue (10.0.0.2). "
+            "Check that all interfaces are UP and IPs are assigned."
+        )
+
+    def test_blue_can_ping_red(self):
+        """Blue namespace should be able to ping red (10.0.0.1)."""
+        result = run_cmd("sudo ip netns exec blue ping -c 1 -W 3 10.0.0.1")
+        assert result.returncode == 0, (
+            "Blue cannot ping red (10.0.0.1). "
+            "Check that all interfaces are UP and IPs are assigned."
+        )
+
+    def test_namespace_can_ping_bridge(self):
+        """Red namespace should be able to ping the bridge gateway."""
+        result = run_cmd(
+            "sudo ip netns exec red ping -c 1 -W 3 10.0.0.254"
+        )
+        assert result.returncode == 0, (
+            "Red cannot ping bridge (10.0.0.254). "
+            "Check that br-study is UP and has the correct IP."
+        )
+
+
+class TestNAT:
+    """Test NAT/masquerade configuration (Exercise 3).
+
+    These tests verify that students have configured IP forwarding
+    and masquerade rules for the namespace lab.
+    """
+
+    def test_ip_forwarding_enabled(self):
+        """IP forwarding should be enabled."""
+        result = run_cmd("sysctl net.ipv4.ip_forward")
+        assert "= 1" in result.stdout, (
+            "IP forwarding is not enabled. "
+            "Enable with: sudo sysctl -w net.ipv4.ip_forward=1"
+        )
+
+    def test_masquerade_rule_exists(self):
+        """An iptables masquerade rule for 10.0.0.0/24 should exist."""
+        result = run_cmd("sudo iptables -t nat -L POSTROUTING -n")
+        assert "10.0.0.0/24" in result.stdout and "MASQUERADE" in result.stdout, (
+            "No masquerade rule found for 10.0.0.0/24. "
+            "Add with: sudo iptables -t nat -A POSTROUTING "
+            "-s 10.0.0.0/24 -o <interface> -j MASQUERADE"
+        )
+
+    def test_namespace_has_default_route(self):
+        """Red namespace should have a default route via 10.0.0.254."""
+        result = run_cmd("sudo ip netns exec red ip route show default")
+        assert "10.0.0.254" in result.stdout, (
+            "Red namespace has no default route. "
+            "Add with: sudo ip netns exec red ip route add default via 10.0.0.254"
+        )
 
 
 if __name__ == "__main__":
