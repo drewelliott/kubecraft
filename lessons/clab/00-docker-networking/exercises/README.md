@@ -23,13 +23,13 @@ Complete these exercises to reinforce your understanding of the Linux primitives
    ```bash
    ip link show master docker0
    ```
-   Note the veth names and the `@ifN` index numbers.
+   Note the veth names, their interface indexes (the number before the colon), and the `link-netnsid` values.
 
 4. Look inside container `c1` and find the other end of the veth pair:
    ```bash
    docker exec c1 ip addr
    ```
-   Compare the `@ifN` index to what you saw on the host.
+   Inside the container, `eth0` shows `@ifN` -- that N is the interface index of the host-side veth. Find that index in the host output from step 3 to match the pair.
 
 5. Check the container's routing table:
    ```bash
@@ -44,7 +44,7 @@ Complete these exercises to reinforce your understanding of the Linux primitives
 ### Questions
 
 - What is the IP of the `docker0` bridge? How does it relate to the container's default gateway?
-- How can you match a host-side veth to its container-side eth0? (Hint: look at the `@ifN` indexes)
+- How can you match a host-side veth to its container-side eth0? (Hint: start from inside the container)
 - What subnet does Docker use for the default bridge?
 
 ### Cleanup

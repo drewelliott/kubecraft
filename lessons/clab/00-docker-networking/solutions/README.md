@@ -17,32 +17,35 @@ The bridge IS the gateway -- packets from containers destined outside the subnet
 
 **How to match a host-side veth to its container-side eth0:**
 
-The `@ifN` index on each end references the other end. For example:
-- On the host: `vethXXXXXXX@if5` -- the `if5` means interface index 5 is the other end
-- In the container: `5: eth0@if6` -- the `if6` means interface index 6 is the host end
+Start from **inside the container** -- this is the reliable direction. Each container namespace has its own interface index numbering, so `eth0` is always index 2 in every container. That means the host-side `@if2` is the same for all containers and doesn't help you distinguish them.
 
-You can verify with:
+But the container's `@ifN` references the **host-side** index, which is globally unique:
+
+```bash
+# Inside c1
+docker exec c1 ip addr
+```
+
+```
+2: eth0@if13: <BROADCAST,MULTICAST,UP,LOWER_UP> ...
+    inet 172.17.0.2/16 scope global eth0
+```
+
+The `@if13` tells you the host-side peer is interface index 13.
+
 ```bash
 # On the host
 ip link show master docker0
 ```
 
 ```
-6: veth1234567@if5: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 ...
-    master docker0 state UP
+13: veth91835c2@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> ...
+    master docker0 state UP ... link-netnsid 0
+14: veth6ea59a4@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> ...
+    master docker0 state UP ... link-netnsid 1
 ```
 
-```bash
-# In the container
-docker exec c1 ip addr
-```
-
-```
-5: eth0@if6: <BROADCAST,MULTICAST,UP,LOWER_UP> ...
-    inet 172.17.0.2/16 scope global eth0
-```
-
-Interface index 6 on the host matches veth1234567, and interface index 5 in the container matches eth0. They are a pair.
+Index 13 is `veth91835c2` -- that's c1's veth pair. Both host-side veths show `@if2` because each namespace numbers `eth0` as index 2 independently. The `link-netnsid` (0 vs 1) identifies which namespace each belongs to, but reading `@ifN` from inside the container is the simplest way to trace the pair.
 
 **Default bridge subnet:** Typically `172.17.0.0/16`.
 

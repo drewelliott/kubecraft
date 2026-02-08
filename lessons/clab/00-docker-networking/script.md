@@ -93,23 +93,19 @@ ip link show master docker0
 
 **Expected Output:**
 ```
-6: vethXXXXXXX@if5: <BROADCAST,MULTICAST,UP,LOWER_UP> ...
-    master docker0 state UP
-8: vethYYYYYYY@if7: <BROADCAST,MULTICAST,UP,LOWER_UP> ...
-    master docker0 state UP
+13: veth91835c2@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> ...
+    master docker0 state UP ... link-netnsid 0
+14: veth6ea59a4@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> ...
+    master docker0 state UP ... link-netnsid 1
 ```
 
-> "Two veth interfaces, both attached to docker0. These are the host-side ends of our veth pairs. The `@if5` and `@if7` tell us the interface index of the other end -- which is inside the container."
+> "Two veth interfaces, both attached to docker0. These are the host-side ends of our veth pairs. Notice the `@if2` on both -- that's the interface index of the other end inside each container. They're both `if2` because each container namespace has its own numbering -- `eth0` is always index 2 in there. The `link-netnsid` tells you which namespace each belongs to.
+>
+> So from the host side alone, you can't easily tell which veth belongs to which container. The trick is to look from the other direction -- from inside the container."
 
 **[Whiteboard annotation moment]** -- Switch to Excalidraw briefly and write the real veth names on the diagram next to the veth pair labels.
 
-> "You can also use the `bridge` command to see this."
-
-```bash
-bridge link
-```
-
-> "Now let's look inside one of the containers."
+> "Let's look inside c1 and match it up."
 
 ```bash
 docker exec c1 ip addr
@@ -119,11 +115,11 @@ docker exec c1 ip addr
 ```
 1: lo: <LOOPBACK,UP,LOWER_UP> ...
     inet 127.0.0.1/8 scope host lo
-5: eth0@if6: <BROADCAST,MULTICAST,UP,LOWER_UP> ...
+2: eth0@if13: <BROADCAST,MULTICAST,UP,LOWER_UP> ...
     inet 172.17.0.2/16 scope global eth0
 ```
 
-> "Inside the container, there's `eth0` -- that's the container-side end of the veth pair. Notice the interface index `@if6` -- that matches the host-side veth we saw earlier. And it has an IP on the 172.17.0.0/16 subnet."
+> "Inside the container, `eth0` is index 2 -- and `@if13` tells us the host-side peer is interface index 13. Look back at the host output -- index 13 is `veth91835c2`. That's our match. This is the reliable way to trace which veth belongs to which container: start inside the container, read the `@ifN`, and find that index on the host."
 
 ```bash
 docker exec c1 ip route
