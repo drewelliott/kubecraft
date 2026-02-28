@@ -1,0 +1,37 @@
+# Lesson 2: IP Fundamentals -- 4-Node Linear Topology
+# host1 -- srl1 -- srl2 -- host2
+
+name: ip-fundamentals
+
+topology:
+  nodes:
+    srl1:
+      kind: srl
+      image: ghcr.io/nokia/srlinux:24.10.1
+      mgmt-ipv4: 172.20.20.11
+
+    srl2:
+      kind: srl
+      image: ghcr.io/nokia/srlinux:24.10.1
+      mgmt-ipv4: 172.20.20.12
+
+    host1:
+      kind: linux
+      image: alpine:3.20
+      exec:
+        - ip link set eth1 up
+        - ip addr add 10.1.1.2/24 dev eth1
+        - ip route add default via 10.1.1.1 dev eth1
+
+    host2:
+      kind: linux
+      image: alpine:3.20
+      exec:
+        - ip link set eth1 up
+        - ip addr add 10.1.3.2/24 dev eth1
+        - ip route add default via 10.1.3.1 dev eth1
+
+  links:
+    - endpoints: ["host1:eth1", "srl1:e1-1"]
+    - endpoints: ["srl1:e1-2", "srl2:e1-1"]
+    - endpoints: ["srl2:e1-2", "host2:eth1"]
