@@ -1,0 +1,26 @@
+{# Generates SR Linux CLI commands for interface configuration.
+   Variables come from host_vars/<hostname>.yml:
+     interfaces:
+       - name: ethernet-1/1
+         ipv4_address: 10.1.1.1/24
+         description: Link to host1
+#}
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "cli",
+  "params": {
+    "commands": [
+      "enter candidate",
+{% for iface in interfaces %}
+      "set / interface {{ iface.name }} admin-state enable",
+      "set / interface {{ iface.name }} subinterface 0 admin-state enable",
+      "set / interface {{ iface.name }} subinterface 0 description {{ iface.description }}",
+      "set / interface {{ iface.name }} subinterface 0 ipv4 admin-state enable",
+      "set / interface {{ iface.name }} subinterface 0 ipv4 address {{ iface.ipv4_address }}",
+      "set / network-instance default interface {{ iface.name }}.0",
+{% endfor %}
+      "commit now"
+    ]
+  }
+}

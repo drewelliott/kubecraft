@@ -1,0 +1,9 @@
+---
+all:
+  children:
+    routers:
+      hosts:
+        srl1:
+          ansible_host: 172.20.20.11
+        srl2:
+          ansible_host: 172.20.20.12

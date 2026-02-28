@@ -1,0 +1,8 @@
+---
+interfaces:
+  - name: ethernet-1/1
+    ipv4_address: 10.1.1.1/24
+    description: Link to host1
+  - name: ethernet-1/2
+    ipv4_address: 10.1.2.1/24
+    description: Link to srl2

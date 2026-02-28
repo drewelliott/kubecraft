@@ -1,0 +1,55 @@
+---
+# Lesson 2: Configure IP addresses on SR Linux routers
+#
+# This playbook uses a Jinja2 template to generate SR Linux CLI commands
+# and pushes them via the JSON-RPC API. Each router gets its own set of
+# commands based on its host_vars (ansible/host_vars/<hostname>.yml).
+#
+# Usage:
+#   ansible-playbook -i inventory.yml playbook.yml
+
+- name: Configure SR Linux router interfaces
+  hosts: routers
+  gather_facts: false
+  connection: local
+
+  tasks:
+    - name: Apply interface configuration via JSON-RPC
+      ansible.builtin.uri:
+        url: "http://{{ ansible_host }}/jsonrpc"
+        method: POST
+        url_username: admin
+        url_password: NokiaSrl1!
+        force_basic_auth: true
+        body_format: json
+        body: "{{ lookup('template', 'templates/srl_interfaces.json.j2') }}"
+        status_code: 200
+      register: config_result
+
+    - name: Show configuration result
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }}: Configuration applied successfully"
+      when: config_result.status == 200
+
+    - name: Verify interfaces are configured
+      ansible.builtin.uri:
+        url: "http://{{ ansible_host }}/jsonrpc"
+        method: POST
+        url_username: admin
+        url_password: NokiaSrl1!
+        force_basic_auth: true
+        body_format: json
+        body:
+          jsonrpc: "2.0"
+          id: 2
+          method: get
+          params:
+            commands:
+              - path: /network-instance[name=default]/interface
+                datastore: state
+        status_code: 200
+      register: verify_result
+
+    - name: Display configured interfaces
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }} interfaces: {{ verify_result.json.result | default('check manually') }}"
