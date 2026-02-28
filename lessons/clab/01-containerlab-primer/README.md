@@ -244,9 +244,9 @@ sleep 20
 docker exec -it clab-first-lab-srl1 sr_cli -c "show interface brief"
 ```
 
-## What's Next
+## Navigation
 
-In [Lesson 2: IP Fundamentals](../02-ip-fundamentals/), you'll configure IP addresses on these devices and establish connectivity.
+Previous: [Lesson 0: Docker Networking](../00-docker-networking/) | [Course Index](../README.md) | Next: [Lesson 2: IP Fundamentals](../02-ip-fundamentals/)
 
 ## Additional Resources
 

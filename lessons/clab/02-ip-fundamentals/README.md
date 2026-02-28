@@ -229,9 +229,9 @@ containerlab inspect --all
 containerlab deploy -t topology/lab.clab.yml --debug
 ```
 
-## What's Next
+## Navigation
 
-In [Lesson 3: Routing Basics](../03-routing-basics/), you'll configure static routes so that host1 can reach host2 across the routers.
+Previous: [Lesson 1: Containerlab Primer](../01-containerlab-primer/) | [Course Index](../README.md) | Next: [Lesson 3: Routing Basics](../03-routing-basics/)
 
 ## Additional Resources
 

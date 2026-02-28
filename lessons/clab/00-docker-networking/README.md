@@ -168,9 +168,9 @@ sudo ip netns exec red ping 10.0.0.2
 
 Complete the exercises in [exercises/README.md](exercises/README.md).
 
-## What's Next
+## Navigation
 
-Now that you understand the Linux primitives under container networking, you're ready for [Lesson 1: Containerlab Primer](../01-containerlab-primer/) where we'll use these concepts to run actual network operating systems in containers.
+[Course Index](../README.md) | Next: [Lesson 1: Containerlab Primer](../01-containerlab-primer/)
 
 ## Additional Resources
 

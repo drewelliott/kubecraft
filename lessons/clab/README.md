@@ -26,7 +26,7 @@ graph LR
 |---|-------|-------|-------------|
 | 0 | [Docker Networking Fundamentals](00-docker-networking/) | Bridge, host, namespaces | Docker Compose |
 | 1 | [Containerlab Primer](01-containerlab-primer/) | Setup, topology files, first lab | Git |
-| 2 | IP Fundamentals & Connectivity | Addressing, subnets, ping | Ansible intro |
+| 2 | [IP Fundamentals & Connectivity](02-ip-fundamentals/) | Addressing, subnets, ping | Ansible intro |
 | 3 | Routing Basics | Static routes, routing tables | Ansible playbooks |
 | 4 | Data Center - Spine-Leaf | BGP, EVPN-VXLAN | Terraform |
 | 5 | Cloud Provider Patterns | VPC simulation, hybrid | ArgoCD patterns |
