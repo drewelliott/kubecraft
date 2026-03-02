@@ -47,9 +47,10 @@ cd kubecraft
 
 - **Docker** -- running and accessible
 - **containerlab** -- [install guide](https://containerlab.dev/install/)
+- **uv** -- [install guide](https://docs.astral.sh/uv/getting-started/installation/)
 - **SR Linux image** -- `docker pull ghcr.io/nokia/srlinux:24.10.1`
 
-> See [full prerequisites](docs/getting-started/prerequisites.md) and [Linux setup guide](docs/getting-started/linux-setup.md) for details.
+> See the [Getting Started guide](docs/getting-started.md) for full prerequisites and setup.
 
 ### 3. Start learning
 

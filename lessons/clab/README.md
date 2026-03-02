@@ -75,7 +75,7 @@ XX-lesson-name/
 2. **Read** the README for objectives
 3. **Deploy** the lab: `sudo containerlab deploy -t topology/lab.clab.yml`
 4. **Complete** exercises in `exercises/`
-5. **Validate** with `pytest tests/`
+5. **Validate** with `uv run --project ../../.. --group test pytest tests/ -v`
 6. **Destroy** the lab: `sudo containerlab destroy -t topology/lab.clab.yml --cleanup`
 7. **Commit** your work to your fork
 
@@ -83,10 +83,9 @@ XX-lesson-name/
 
 Before starting this series:
 
-- [ ] Completed Kubernetes basics course
-- [ ] Comfortable with Docker and Linux CLI
-- [ ] Containerlab installed ([Linux Setup Guide](../../docs/getting-started/linux-setup.md))
-- [ ] Forked this repository ([Fork Guide](../../docs/getting-started/fork-workflow.md))
+- [ ] Comfortable with containers, Linux CLI, and Git ([Getting Started](../../docs/getting-started.md))
+- [ ] Tools installed ([Getting Started](../../docs/getting-started.md))
+- [ ] Forked this repository ([Getting Started](../../docs/getting-started.md#fork-and-clone))
 
 ## Time Commitment
 

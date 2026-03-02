@@ -16,7 +16,7 @@ By the end of this lesson, you will be able to:
 ## Prerequisites
 
 - Completed Lesson 0: Docker Networking Fundamentals
-- Containerlab installed ([Linux Setup Guide](../../../docs/getting-started/linux-setup.md))
+- Containerlab installed ([Getting Started](../../../docs/getting-started.md))
 - Basic YAML knowledge
 
 ## Video Outline
