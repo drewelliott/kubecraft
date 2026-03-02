@@ -148,7 +148,7 @@ docker rm -f c1 c2
 ### Deliverables
 
 Document in `exercises/exercise2-answers.md`:
-- What happens if you skip bringing up the loopback (`lo`)? Try it and see.
+- What happens if you skip bringing up the loopback (`lo`)? Try pinging `127.0.0.1` from inside the namespace, then try pinging the other namespace. Which works and which doesn't? Why?
 - The output of `ip link show master br-study` on the host, and what each line means
 - A comparison: how is your manual setup different from what Docker does with `docker0`? (Hint: Docker automates these exact steps)
 
