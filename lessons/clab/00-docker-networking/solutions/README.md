@@ -88,18 +88,16 @@ sudo ip link set veth-b netns blue
 sudo ip link set veth-b-br master br-study
 sudo ip link set veth-b-br up
 
-# 6. Configure IPs
+# 6. Configure IPs (but NOT loopback yet)
 sudo ip netns exec red ip addr add 10.0.0.1/24 dev veth-r
 sudo ip netns exec red ip link set veth-r up
-sudo ip netns exec red ip link set lo up
 
 sudo ip netns exec blue ip addr add 10.0.0.2/24 dev veth-b
 sudo ip netns exec blue ip link set veth-b up
-sudo ip netns exec blue ip link set lo up
 ```
 
 ```bash
-# 7. Test connectivity
+# 7. Test connectivity between namespaces
 sudo ip netns exec red ping -c 3 10.0.0.2
 ```
 
@@ -125,11 +123,35 @@ PING 10.0.0.254 (10.0.0.254) 56(84) bytes of data.
 64 bytes from 10.0.0.254: icmp_seq=2 ttl=64 time=0.028 ms
 ```
 
+```bash
+# 8. Try pinging loopback (fails -- lo is DOWN)
+sudo ip netns exec red ping -c 2 127.0.0.1
+```
+
+**Expected output:**
+```
+ping: connect: Network is unreachable
+```
+
+```bash
+# 9. Bring up loopback and verify
+sudo ip netns exec red ip link set lo up
+sudo ip netns exec blue ip link set lo up
+sudo ip netns exec red ping -c 2 127.0.0.1
+```
+
+**Expected output:**
+```
+PING 127.0.0.1 (127.0.0.1) 56(84) bytes of data.
+64 bytes from 127.0.0.1: icmp_seq=1 ttl=64 time=0.020 ms
+64 bytes from 127.0.0.1: icmp_seq=2 ttl=64 time=0.018 ms
+```
+
 ### Answers to questions
 
-**What happens if you skip bringing up loopback?**
+**Why did 127.0.0.1 fail before bringing up `lo`, even though pinging the other namespace worked?**
 
-Most things still work, but some applications that bind to localhost or use loopback for internal communication will fail. It's good practice to always bring it up.
+Pinging 10.0.0.2 works because that traffic goes out through `veth-r`, across the bridge, and into the blue namespace -- all of those interfaces are UP. But `127.0.0.1` is handled by the loopback interface (`lo`), which starts DOWN in new namespaces. The kernel won't route to an address on a down interface. Loopback is a separate interface from the bridge-connected veths -- bringing up `veth-r` doesn't help loopback traffic.
 
 **What does `ip link show master br-study` show?**
 

@@ -45,12 +45,11 @@ cd lessons/clab/00-docker-networking
    docker network inspect bridge
    ```
 
-### Deliverables
+### Think about it
 
-Create a file `exercises/exercise1-answers.md` with:
-- The IP of the `docker0` bridge and how it relates to the container's default gateway
-- A step-by-step explanation of how to match a host-side veth to its container-side eth0 (hint: start from inside the container)
-- The subnet Docker uses for the default bridge
+- What is the IP of the `docker0` bridge, and how does it relate to the container's default gateway?
+- How do you match a host-side veth to its container-side eth0? (Hint: start from inside the container and look at the `@ifN` index.)
+- What subnet does Docker use for the default bridge?
 
 ### Cleanup
 
@@ -66,22 +65,19 @@ docker rm -f c1 c2
 
 ### Architecture
 
-```
-┌─────────────────────────────────────────────────────┐
-│  Host                                               │
-│                                                     │
-│  ┌─────────────────────────────────┐                │
-│  │         br-study                │                │
-│  │       10.0.0.254/24            │                │
-│  └──────┬──────────────┬───────────┘                │
-│     veth-r-br       veth-b-br                       │
-│         │              │                            │
-│ ┌───────┴──────┐ ┌─────┴────────┐                   │
-│ │   red        │ │   blue       │                   │
-│ │   veth-r     │ │   veth-b     │                   │
-│ │ 10.0.0.1/24  │ │ 10.0.0.2/24 │                   │
-│ └──────────────┘ └──────────────┘                   │
-└─────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph Host
+        BR["br-study<br/>10.0.0.254/24"]
+        subgraph red [red namespace]
+            VR["veth-r<br/>10.0.0.1/24"]
+        end
+        subgraph blue [blue namespace]
+            VB["veth-b<br/>10.0.0.2/24"]
+        end
+        VR --- |veth-r-br| BR
+        VB --- |veth-b-br| BR
+    end
 ```
 
 ### Steps
@@ -156,20 +152,11 @@ docker rm -f c1 c2
    sudo ip netns exec red ping -c 2 127.0.0.1
    ```
 
-### Deliverables
+### Think about it
 
-Document in `exercises/exercise2-answers.md`:
 - Why did `127.0.0.1` fail before bringing up `lo`, even though pinging the other namespace worked? What does this tell you about how loopback differs from bridge-connected interfaces?
-- The output of `ip link show master br-study` on the host, and what each line means
-- A comparison: how is your manual setup different from what Docker does with `docker0`? (Hint: Docker automates these exact steps)
-
-### Cleanup
-
-```bash
-sudo ip netns del red
-sudo ip netns del blue
-sudo ip link del br-study
-```
+- Run `ip link show master br-study` on the host. What does each line tell you?
+- How is your manual setup different from what Docker does with `docker0`? (Hint: Docker automates these exact steps.)
 
 ---
 
@@ -179,7 +166,7 @@ sudo ip link del br-study
 
 ### Prerequisites
 
-Complete Exercise 2 first (namespaces, bridge, and veth pairs must be in place). If you already cleaned up, re-run the Exercise 2 steps before continuing.
+Complete Exercise 2 first (namespaces, bridge, and veth pairs must be in place).
 
 ### Steps
 
@@ -222,24 +209,12 @@ Complete Exercise 2 first (namespaces, bridge, and veth pairs must be in place).
    sudo iptables -t nat -L POSTROUTING -v
    ```
 
-### Deliverables
+### Think about it
 
-Document in `exercises/exercise3-answers.md`:
-- What does the masquerade rule actually do to each packet? (Describe the source IP rewriting)
+- What does the masquerade rule actually do to each packet? (Think about source IP rewriting.)
 - Why do we need IP forwarding enabled?
 - Why does Docker's FORWARD policy block our traffic, and what does Docker allow instead?
-- The output of `sudo iptables -t nat -L POSTROUTING -v` -- can you find Docker's masquerade rule for 172.17.0.0/16?
-
-### Cleanup
-
-```bash
-sudo ip netns del red
-sudo ip netns del blue
-sudo ip link del br-study
-sudo iptables -D FORWARD -i br-study -j ACCEPT
-sudo iptables -D FORWARD -o br-study -j ACCEPT
-sudo iptables -t nat -D POSTROUTING -s 10.0.0.0/24 -o enp6s0 -j MASQUERADE
-```
+- Look at the output of `sudo iptables -t nat -L POSTROUTING -v` -- can you find Docker's masquerade rule for 172.17.0.0/16?
 
 ---
 
@@ -270,12 +245,10 @@ sudo ip netns exec red ping -c 2 10.0.0.2
 2. Check if the veth pairs are still attached: `ip link show master br-study`
 3. Fix the bridge and verify ping works again.
 
-### Deliverables
+### Think about it
 
-Document:
-- The commands you used to diagnose the problem
-- What "state DOWN" on a bridge means for all attached interfaces
-- Your fix and verification
+- What does "state DOWN" on a bridge mean for all attached interfaces?
+- How did you confirm the bridge was the problem and not the veth pairs themselves?
 
 ---
 
@@ -312,12 +285,35 @@ sudo ip netns exec red ping -c 2 -W 3 8.8.8.8
 3. Explain why local traffic works but internet traffic doesn't -- what does masquerade do that local bridging doesn't need?
 4. Fix by re-adding the masquerade rule and verify internet access.
 
-### Deliverables
+### Think about it
 
-Explain:
-- Why removing the masquerade rule breaks internet access but not local connectivity
-- What masquerade does to the source IP of outbound packets
-- How return traffic finds its way back to the namespace
+- Why does removing the masquerade rule break internet access but not local connectivity?
+- What does masquerade do to the source IP of outbound packets?
+- How does return traffic find its way back to the namespace?
+
+### Validate your work
+
+Before cleaning up, run the automated tests to verify Exercises 1-3 are set up correctly. Make sure you have re-added the masquerade rule (step 4 above) before running this:
+
+```bash
+cd lessons/clab/00-docker-networking
+pytest tests/ -v
+```
+
+### Cleanup
+
+You're done with the manual namespace setup from Exercises 2-5. Clean up all resources:
+
+```bash
+sudo ip netns del red
+sudo ip netns del blue
+sudo ip link del br-study
+sudo iptables -D FORWARD -i br-study -j ACCEPT
+sudo iptables -D FORWARD -o br-study -j ACCEPT
+sudo iptables -t nat -D POSTROUTING -s 10.0.0.0/24 -o enp6s0 -j MASQUERADE
+```
+
+(Replace `enp6s0` with whatever interface you used in Exercise 3.)
 
 ---
 
@@ -364,15 +360,6 @@ docker compose down
 ```
 
 ---
-
-## Validation
-
-Run the automated tests to verify your work:
-
-```bash
-cd lessons/clab/00-docker-networking
-pytest tests/ -v
-```
 
 ## Completion Checklist
 

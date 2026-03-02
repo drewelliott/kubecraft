@@ -85,24 +85,19 @@ iptables -t nat -A POSTROUTING -s 10.0.0.0/24 -o <host-iface> -j MASQUERADE
 
 ## Lab Architecture
 
-```
-┌─────────────────────────────────────────────────────┐
-│  Host Network Namespace                             │
-│                                                     │
-│  ┌─────────────────────────────────┐                │
-│  │        docker0 / br-study       │                │
-│  │          (Linux bridge)         │                │
-│  └──────┬──────────────┬───────────┘                │
-│         │              │                            │
-│     veth-r-br      veth-b-br                        │
-│         │              │                            │
-│ ┌───────┴──────┐ ┌─────┴────────┐                   │
-│ │  Namespace:  │ │  Namespace:  │                   │
-│ │    red       │ │    blue      │                   │
-│ │  veth-r      │ │  veth-b     │                   │
-│ │  10.0.0.1/24 │ │  10.0.0.2/24│                   │
-│ └──────────────┘ └──────────────┘                   │
-└─────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph Host["Host Network Namespace"]
+        BR["docker0 / br-study<br/>(Linux bridge)"]
+        subgraph red [red namespace]
+            VR["veth-r<br/>10.0.0.1/24"]
+        end
+        subgraph blue [blue namespace]
+            VB["veth-b<br/>10.0.0.2/24"]
+        end
+        VR --- |veth-r-br| BR
+        VB --- |veth-b-br| BR
+    end
 ```
 
 ## Key Concepts
