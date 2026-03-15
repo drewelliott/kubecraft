@@ -1,0 +1,71 @@
+# Lesson 4: Dynamic Routing with BGP -- Hub-and-Spoke + Redundant Link
+#
+# host1 -- srl1 (hub) -- srl2 -- host2
+#               |        /
+#              srl3 ----
+#               |
+#             host3
+#
+# The srl2-srl3 link (e1-3 on both sides) is pre-wired but unconfigured
+# at deploy time. Students enable it in exercise 3 to add a redundant path.
+
+name: dynamic-routing-bgp
+
+topology:
+  nodes:
+    srl1:
+      kind: srl
+      image: ghcr.io/nokia/srlinux:24.10.1
+      mgmt-ipv4: 172.20.20.11
+      startup-config: configs/srl1-base.cli
+
+    srl2:
+      kind: srl
+      image: ghcr.io/nokia/srlinux:24.10.1
+      mgmt-ipv4: 172.20.20.12
+      startup-config: configs/srl2-base.cli
+
+    srl3:
+      kind: srl
+      image: ghcr.io/nokia/srlinux:24.10.1
+      mgmt-ipv4: 172.20.20.13
+      startup-config: configs/srl3-base.cli
+
+    host1:
+      kind: linux
+      image: alpine:3.20
+      exec:
+        - apk add --no-cache iputils traceroute
+        - ip link set eth1 up
+        - ip addr add 10.1.1.2/24 dev eth1
+        - ip route delete default
+        - ip route add default via 10.1.1.1 dev eth1
+
+    host2:
+      kind: linux
+      image: alpine:3.20
+      exec:
+        - apk add --no-cache iputils traceroute
+        - ip link set eth1 up
+        - ip addr add 10.1.4.2/24 dev eth1
+        - ip route delete default
+        - ip route add default via 10.1.4.1 dev eth1
+
+    host3:
+      kind: linux
+      image: alpine:3.20
+      exec:
+        - apk add --no-cache iputils traceroute
+        - ip link set eth1 up
+        - ip addr add 10.1.5.2/24 dev eth1
+        - ip route delete default
+        - ip route add default via 10.1.5.1 dev eth1
+
+  links:
+    - endpoints: ["host1:eth1", "srl1:e1-1"]
+    - endpoints: ["srl1:e1-2", "srl2:e1-1"]
+    - endpoints: ["srl1:e1-3", "srl3:e1-1"]
+    - endpoints: ["srl2:e1-2", "host2:eth1"]
+    - endpoints: ["srl3:e1-2", "host3:eth1"]
+    # Pre-wired redundant link -- interfaces unconfigured at deploy time
+    - endpoints: ["srl2:e1-3", "srl3:e1-3"]

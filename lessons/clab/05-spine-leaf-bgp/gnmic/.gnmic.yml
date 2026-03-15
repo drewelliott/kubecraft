@@ -1,0 +1,21 @@
+# gNMIc configuration for the spine-leaf fabric
+# Usage: run gnmic commands from this directory
+#
+# Query all routers at once:
+#   gnmic get --path /network-instance[name=default]/protocols/bgp/neighbor --type state
+#
+# Target a specific router:
+#   gnmic -a clab-spine-leaf-bgp-spine1:57400 get --path /system/name --type state
+
+encoding: json_ietf
+skip-verify: true
+username: admin
+password: NokiaSrl1!
+
+targets:
+  clab-spine-leaf-bgp-spine1:57400:
+  clab-spine-leaf-bgp-spine2:57400:
+  clab-spine-leaf-bgp-leaf1:57400:
+  clab-spine-leaf-bgp-leaf2:57400:
+  clab-spine-leaf-bgp-leaf3:57400:
+  clab-spine-leaf-bgp-leaf4:57400:

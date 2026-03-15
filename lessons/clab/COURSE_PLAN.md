@@ -116,65 +116,55 @@ By the end of this series, students will be able to:
 
 ### Domain-Specific Lessons (4-6)
 
-#### Lesson 4: Data Center Networking - Spine-Leaf
+#### Lesson 4: Dynamic Routing with BGP
 **Duration:** 10-15 minutes
-**Objective:** Understand modern data center network architecture
+**Objective:** Replace static routes with eBGP and understand dynamic route propagation
+
+**Topics:**
+- Why dynamic routing? Limitations of static routes at scale
+- eBGP fundamentals: autonomous systems, peering, route advertisement
+- Path selection and convergence behavior
+- Comparing static vs dynamic: predictability vs adaptability
+- Relevant for: Kubernetes networking, cloud provider backbone design
+
+**Hands-on Exercise:**
+- Deploy the evolved hub-and-spoke topology with eBGP
+- Use gNMIc to observe BGP state and route propagation
+- Simulate link failures and observe convergence
+- Compare routing tables before and after BGP
+
+**GitOps Tool:** gNMIc for streaming telemetry and configuration
+
+---
+
+#### Lesson 5: Spine-Leaf Networking with BGP
+**Duration:** 10-15 minutes
+**Objective:** Build a CLOS fabric with eBGP and understand ECMP
 
 **Topics:**
 - Why spine-leaf architecture? (vs traditional 3-tier)
-- BGP as an underlay protocol (eBGP in the DC)
-- Introduction to EVPN-VXLAN concepts
-- East-west vs north-south traffic
+- CLOS fabric design: spines, leaves, and hosts
+- eBGP in the data center: one AS per leaf, shared spine AS
+- ECMP: equal-cost multipath for load distribution
+- Fabric resilience: surviving spine and leaf failures
 - Relevant for: Kubernetes networking, container orchestration
 
 **Hands-on Exercise:**
-- Deploy a 2-spine, 4-leaf topology
-- Configure BGP peering
-- Verify routing table propagation
+- Deploy a 2-spine, 2-leaf fabric with hosts
+- Verify full-mesh BGP peering and ECMP paths
+- Simulate spine and leaf failures, observe resilience
+- Use gNMIc to monitor fabric health
 
-**GitOps Tool:** Terraform containerlab provider for lab provisioning
-
----
-
-#### Lesson 5: Cloud Provider Networking Patterns
-**Duration:** 10-15 minutes
-**Objective:** Understand cloud networking primitives through simulation
-
-**Topics:**
-- VPC/VNet concepts simulated in containerlab
-- Network segmentation and isolation
-- Hybrid connectivity patterns (on-prem to cloud)
-- Network ACLs and security groups (conceptual)
-- Relevant for: AWS, Azure, GCP networking decisions
-
-**Hands-on Exercise:**
-- Simulate multi-VPC architecture
-- Configure routing between "VPCs"
-- Implement basic network segmentation
-
-**GitOps Tool:** ArgoCD patterns for network configuration (K8s-native GitOps)
-
-**Note:** This lesson sets foundation for potential deep-dive follow-up courses on specific cloud providers (AWS, Azure, GCP, OCI)
+**GitOps Tool:** gNMIc + startup-config for declarative fabric provisioning
 
 ---
 
-#### Lesson 6: Edge & WAN Networking
-**Duration:** 10-15 minutes
-**Objective:** Understand site-to-site connectivity and WAN concepts
-
-**Topics:**
-- Edge/branch networking for DevOps
-- Site-to-site connectivity patterns
-- WAN optimization concepts
-- Network services overview (NAT, basic firewall)
-- SD-WAN introduction (conceptual)
-
-**Hands-on Exercise:**
-- Deploy multi-site topology (HQ + 2 branches)
-- Configure site-to-site routing
-- Implement NAT for internet simulation
-
-**GitOps Tool:** Ansible with Jinja2 templates for multi-site configs
+#### Lessons 6+: TBD
+Future topics under consideration:
+- EVPN/VXLAN overlay networking
+- Cloud provider networking patterns
+- Network troubleshooting methodology
+- Capstone: full GitOps network lab
 
 ---
 
@@ -267,19 +257,10 @@ kubecraft/
         ├── 03-routing-basics/
         │   └── ... (same structure)
         │
-        ├── 04-datacenter-spine-leaf/
+        ├── 04-dynamic-routing-bgp/
         │   └── ... (same structure)
         │
-        ├── 05-cloud-patterns/
-        │   └── ... (same structure)
-        │
-        ├── 06-edge-wan/
-        │   └── ... (same structure)
-        │
-        ├── 07-troubleshooting/
-        │   └── ... (same structure)
-        │
-        └── 08-capstone/
+        └── 05-spine-leaf-bgp/
             └── ... (same structure)
 ```
 
@@ -404,11 +385,9 @@ For this course, we'll use exclusively free, containerized network operating sys
 |--------|------|---------|
 | 1 | Git | Version control for topology files |
 | 2-3 | Ansible | Configuration management, playbooks |
-| 4 | Terraform | Infrastructure as code, containerlab provider |
-| 5 | ArgoCD patterns | Kubernetes-native GitOps |
-| 6 | Ansible + Jinja2 | Templated multi-site configs |
-| 7 | pytest | Automated network validation |
-| 8 | Full pipeline | CI/CD for network changes |
+| 4 | gNMIc | Streaming telemetry and network state |
+| 5 | gNMIc + startup-config | Declarative fabric provisioning |
+| 6+ | TBD | Future lessons in development |
 
 ---
 

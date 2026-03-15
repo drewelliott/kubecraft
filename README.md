@@ -23,10 +23,11 @@ Lesson 0   Docker Networking              Linux bridges, namespaces, veth pairs,
 Lesson 1   Containerlab Primer            Topology files, deploy/destroy, SR Linux CLI
 Lesson 2   IP Fundamentals                Addressing, subnets, Ansible + Jinja2 automation
 Lesson 3   Routing Basics                 Static routes, routing tables, break/fix labs
-Lesson 4   Dynamic Routing Protocols      Coming soon
+Lesson 4   Dynamic Routing with BGP       eBGP, path selection, convergence, gNMIc
+Lesson 5   Spine-Leaf Networking          CLOS fabric, ECMP, fabric resilience
 ```
 
-Each lesson introduces automation tools alongside networking concepts -- Git, Ansible, Jinja2 -- so you build DevOps muscle memory, not just networking knowledge.
+Each lesson introduces automation tools alongside networking concepts -- Git, Ansible, Jinja2, gNMIc -- so you build DevOps muscle memory, not just networking knowledge.
 
 > **[Browse the full course outline and lesson details](lessons/clab/)**
 

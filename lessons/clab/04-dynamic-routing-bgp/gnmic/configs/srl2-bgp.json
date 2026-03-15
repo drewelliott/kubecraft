@@ -1,0 +1,38 @@
+[
+  {
+    "path": "/routing-policy/policy[name=export-connected]",
+    "value": {
+      "default-action": {"policy-result": "reject"},
+      "statement": [
+        {
+          "name": "10",
+          "match": {"protocol": "local"},
+          "action": {"policy-result": "accept"}
+        }
+      ]
+    }
+  },
+  {
+    "path": "/network-instance[name=default]/protocols/bgp",
+    "value": {
+      "admin-state": "enable",
+      "autonomous-system": 65002,
+      "router-id": "10.0.0.2",
+      "group": [
+        {
+          "group-name": "ebgp-peers",
+          "admin-state": "enable",
+          "export-policy": "export-connected"
+        }
+      ],
+      "neighbor": [
+        {
+          "peer-address": "10.1.2.1",
+          "admin-state": "enable",
+          "peer-as": 65001,
+          "peer-group": "ebgp-peers"
+        }
+      ]
+    }
+  }
+]
