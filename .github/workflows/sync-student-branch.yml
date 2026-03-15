@@ -5,10 +5,10 @@
 # main = student-facing view (clean, no instructor content)
 # instructor = full working branch (student + instructor content)
 #
-# Uses the "gh-pages pattern": each sync builds a fresh tree object and
-# creates a commit whose only parent is the previous main tip. This gives
-# main its own linear history with no shared ancestry to instructor, so
-# GitHub never shows misleading ahead/behind counts.
+# Each sync creates a merge commit on main with instructor HEAD as a
+# parent. The commit's tree contains only student-facing files. Since
+# instructor HEAD is a parent, git sees all instructor commits as
+# reachable from main, giving a clean 0-ahead/0-behind on GitHub.
 
 name: Sync student branch
 
@@ -69,47 +69,36 @@ jobs:
           cd "$GITHUB_WORKSPACE"
 
           # Write the filtered tree into git's object store
-          TREE=$(git -C "$GITHUB_WORKSPACE" --work-tree="$WORK" add --all --dry-run 2>/dev/null || true)
-          # Use a temporary index to build the tree from the filtered files
           export GIT_INDEX_FILE=$(mktemp)
           rm -f "$GIT_INDEX_FILE"
           git --work-tree="$WORK" add --all
           NEW_TREE=$(git write-tree)
 
-          # Determine the parent commit for the new main commit.
-          # If main exists and has NO shared ancestry with instructor,
-          # use it as parent (preserving main's independent linear history).
-          # If main shares ancestry with instructor (legacy) or doesn't
-          # exist, create a fresh orphan root to cleanly sever the histories.
-          PARENT=""
+          # instructor HEAD is always a parent (so git sees instructor
+          # history as reachable from main -> 0 ahead/0 behind)
+          INSTRUCTOR_HEAD=$(git rev-parse HEAD)
+
+          # Previous main tip is also a parent (for linear main history)
           MAIN_TIP=$(git rev-parse --verify refs/remotes/origin/main 2>/dev/null || true)
 
+          # Check if tree actually changed
           if [ -n "$MAIN_TIP" ]; then
-            # Check if the tree has changed
             OLD_TREE=$(git rev-parse "${MAIN_TIP}^{tree}" 2>/dev/null || true)
             if [ "$NEW_TREE" = "$OLD_TREE" ]; then
               echo "No changes to sync"
               exit 0
             fi
-
-            # Check for shared ancestry with instructor
-            MERGE_BASE=$(git merge-base "$MAIN_TIP" HEAD 2>/dev/null || true)
-            if [ -z "$MERGE_BASE" ]; then
-              # No shared ancestry — main is already independent, chain onto it
-              PARENT="$MAIN_TIP"
-              echo "Main has independent history, chaining new commit"
-            else
-              # Shared ancestry detected — sever it with an orphan root
-              echo "Shared ancestry detected, creating orphan root to sever histories"
-            fi
           fi
 
+          # Build the commit with appropriate parents
           SHORT_SHA=$(git rev-parse --short HEAD)
-          if [ -n "$PARENT" ]; then
-            NEW_COMMIT=$(git commit-tree "$NEW_TREE" -p "$PARENT" \
+          if [ -n "$MAIN_TIP" ]; then
+            NEW_COMMIT=$(git commit-tree "$NEW_TREE" \
+              -p "$MAIN_TIP" -p "$INSTRUCTOR_HEAD" \
               -m "sync: update student branch from instructor@${SHORT_SHA}")
           else
             NEW_COMMIT=$(git commit-tree "$NEW_TREE" \
+              -p "$INSTRUCTOR_HEAD" \
               -m "sync: initial student branch from instructor@${SHORT_SHA}")
           fi
 
