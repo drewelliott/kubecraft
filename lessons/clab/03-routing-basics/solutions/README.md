@@ -148,7 +148,7 @@ The return path mirrors the forward path through the hub. Every hop makes an ind
 
 ---
 
-## Exercise 3: Break/Fix -- Missing Route
+## Exercise 3: Break/Fix -- Missing Route (Return Path Analysis)
 
 **srl2's routing table after deleting the route:**
 

@@ -79,9 +79,9 @@ Complete these exercises to build your routing and troubleshooting skills.
 
 ---
 
-## Exercise 3: Break/Fix -- Missing Route (Asymmetric Routing)
+## Exercise 3: Break/Fix -- Missing Route
 
-**Objective:** Understand what happens when a router is missing a route and observe asymmetric routing behavior.
+**Objective:** Understand what happens when a router is missing a route and why both directions can break even when only one router is affected.
 
 ### Setup (break it)
 
@@ -104,8 +104,11 @@ exit
 # This FAILS -- host2 cannot reach host3
 docker exec clab-routing-basics-host2 ping -c 3 -W 5 10.1.5.2
 
-# But this WORKS -- host3 can reach host2
+# This ALSO FAILS -- host3 cannot reach host2 (why?)
 docker exec clab-routing-basics-host3 ping -c 3 -W 5 10.1.4.2
+
+# But this WORKS -- host1 can still reach host3
+docker exec clab-routing-basics-host1 ping -c 3 10.1.5.2
 ```
 
 ### Your Task
@@ -115,7 +118,7 @@ docker exec clab-routing-basics-host3 ping -c 3 -W 5 10.1.4.2
    docker exec -it clab-routing-basics-srl2 sr_cli -c "show network-instance default route-table ipv4-unicast summary"
    ```
 
-2. Explain why host2->host3 fails but host3->host2 works (hint: trace both directions).
+2. Explain why both host2->host3 AND host3->host2 fail, even though only srl2 is missing a route (hint: trace both the forward path and the return path for each ping).
 
 3. Fix by re-adding the route:
    ```bash
@@ -139,7 +142,7 @@ docker exec clab-routing-basics-host3 ping -c 3 -W 5 10.1.4.2
 
 ### Deliverables
 
-- Explanation of asymmetric routing (forward path vs return path)
+- Explanation of why the missing route breaks both directions (forward path vs return path)
 - The diagnostic commands you used
 
 ---
@@ -351,7 +354,7 @@ pytest tests/ -v
 
 - [ ] Exercise 1: Deployed lab, applied Ansible config, verified end-to-end connectivity
 - [ ] Exercise 2: Read routing tables, traced packet path hop by hop
-- [ ] Exercise 3: Diagnosed and fixed missing route (asymmetric routing)
+- [ ] Exercise 3: Diagnosed and fixed missing route (return path analysis)
 - [ ] Exercise 4: Diagnosed and fixed wrong next-hop (black hole)
 - [ ] Exercise 5: Diagnosed and fixed routing loop (TTL)
 - [ ] Exercise 6: Diagnosed and fixed unreachable next-hop (link down)

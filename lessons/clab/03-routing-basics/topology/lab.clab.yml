@@ -29,6 +29,7 @@ topology:
         - apk add --no-cache iputils traceroute
         - ip link set eth1 up
         - ip addr add 10.1.1.2/24 dev eth1
+        - ip route delete default
         - ip route add default via 10.1.1.1 dev eth1
 
     host2:
@@ -38,6 +39,7 @@ topology:
         - apk add --no-cache iputils traceroute
         - ip link set eth1 up
         - ip addr add 10.1.4.2/24 dev eth1
+        - ip route delete default
         - ip route add default via 10.1.4.1 dev eth1
 
     host3:
@@ -47,6 +49,7 @@ topology:
         - apk add --no-cache iputils traceroute
         - ip link set eth1 up
         - ip addr add 10.1.5.2/24 dev eth1
+        - ip route delete default
         - ip route add default via 10.1.5.1 dev eth1
 
   links:

@@ -15,7 +15,7 @@
 {% for iface in interfaces %}
       "set / interface {{ iface.name }} admin-state enable",
       "set / interface {{ iface.name }} subinterface 0 admin-state enable",
-      "set / interface {{ iface.name }} subinterface 0 description {{ iface.description }}",
+      "set / interface {{ iface.name }} subinterface 0 description '{{ iface.description }}'",
       "set / interface {{ iface.name }} subinterface 0 ipv4 admin-state enable",
       "set / interface {{ iface.name }} subinterface 0 ipv4 address {{ iface.ipv4_address }}",
       "set / network-instance default interface {{ iface.name }}.0",
