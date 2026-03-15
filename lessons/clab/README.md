@@ -11,8 +11,9 @@ graph LR
     L0[Lesson 0: Docker Networking] --> L1[Lesson 1: Containerlab Primer]
     L1 --> L2[Lesson 2: IP Fundamentals]
     L2 --> L3[Lesson 3: Routing Basics]
-    L3 --> L4[Lesson 4: Dynamic Routing Protocols]
-    L4 --> L5[Lessons 5+: Coming Soon]
+    L3 --> L4[Lesson 4: Dynamic Routing with BGP]
+    L4 --> L5[Lesson 5: Spine-Leaf with BGP]
+    L5 --> L6[Lessons 6+: Coming Soon]
 ```
 
 ## Lessons
@@ -23,7 +24,8 @@ graph LR
 | 1 | [Containerlab Primer](01-containerlab-primer/) | Setup, topology files, first lab | Git |
 | 2 | [IP Fundamentals & Connectivity](02-ip-fundamentals/) | Addressing, subnets, ping | Ansible intro |
 | 3 | [Routing Basics & Static Routes](03-routing-basics/) | Static routes, routing tables | Ansible playbooks |
-| 4 | Dynamic Routing Protocols | Coming soon | TBD |
+| 4 | [Dynamic Routing with BGP](04-dynamic-routing-bgp/) | eBGP, path selection, convergence | gNMIc |
+| 5 | [Spine-Leaf Networking with BGP](05-spine-leaf-bgp/) | CLOS fabric, ECMP, resilience | gNMIc + startup-config |
 
 ## Learning Path
 
@@ -34,8 +36,9 @@ Start here. These lessons build core skills:
 - IP addressing and connectivity
 - Static routing and troubleshooting
 
-### Dynamic Routing (Lesson 4)
-- Dynamic routing protocols (BGP, OSPF)
+### Dynamic Routing (Lessons 4-5)
+- eBGP peering, path selection, and convergence
+- Spine-leaf (CLOS) fabric design with ECMP
 
 ### Future Lessons
 Additional lessons are in development. Check back for updates.

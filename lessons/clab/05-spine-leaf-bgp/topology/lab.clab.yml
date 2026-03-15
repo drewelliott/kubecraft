@@ -1,0 +1,105 @@
+# Lesson 5: Spine-Leaf Networking with BGP -- 2-Spine + 4-Leaf CLOS Fabric
+#
+#      spine1 (AS 65100)    spine2 (AS 65101)
+#       / |  \    \          / |   \    \
+#    leaf1 leaf2 leaf3  leaf4
+#  (65001)(65002)(65003)(65004)
+#     |      |      |      |
+#   host1  host2  host3  host4
+
+name: spine-leaf-bgp
+
+topology:
+  nodes:
+    spine1:
+      kind: srl
+      image: ghcr.io/nokia/srlinux:24.10.1
+      mgmt-ipv4: 172.20.20.101
+      startup-config: configs/spine1-base.cli
+
+    spine2:
+      kind: srl
+      image: ghcr.io/nokia/srlinux:24.10.1
+      mgmt-ipv4: 172.20.20.102
+      startup-config: configs/spine2-base.cli
+
+    leaf1:
+      kind: srl
+      image: ghcr.io/nokia/srlinux:24.10.1
+      mgmt-ipv4: 172.20.20.1
+      startup-config: configs/leaf1-base.cli
+
+    leaf2:
+      kind: srl
+      image: ghcr.io/nokia/srlinux:24.10.1
+      mgmt-ipv4: 172.20.20.2
+      startup-config: configs/leaf2-base.cli
+
+    leaf3:
+      kind: srl
+      image: ghcr.io/nokia/srlinux:24.10.1
+      mgmt-ipv4: 172.20.20.3
+      startup-config: configs/leaf3-base.cli
+
+    leaf4:
+      kind: srl
+      image: ghcr.io/nokia/srlinux:24.10.1
+      mgmt-ipv4: 172.20.20.4
+      startup-config: configs/leaf4-base.cli
+
+    host1:
+      kind: linux
+      image: alpine:3.20
+      exec:
+        - apk add --no-cache iputils traceroute
+        - ip link set eth1 up
+        - ip addr add 10.20.1.2/24 dev eth1
+        - ip route delete default
+        - ip route add default via 10.20.1.1 dev eth1
+
+    host2:
+      kind: linux
+      image: alpine:3.20
+      exec:
+        - apk add --no-cache iputils traceroute
+        - ip link set eth1 up
+        - ip addr add 10.20.2.2/24 dev eth1
+        - ip route delete default
+        - ip route add default via 10.20.2.1 dev eth1
+
+    host3:
+      kind: linux
+      image: alpine:3.20
+      exec:
+        - apk add --no-cache iputils traceroute
+        - ip link set eth1 up
+        - ip addr add 10.20.3.2/24 dev eth1
+        - ip route delete default
+        - ip route add default via 10.20.3.1 dev eth1
+
+    host4:
+      kind: linux
+      image: alpine:3.20
+      exec:
+        - apk add --no-cache iputils traceroute
+        - ip link set eth1 up
+        - ip addr add 10.20.4.2/24 dev eth1
+        - ip route delete default
+        - ip route add default via 10.20.4.1 dev eth1
+
+  links:
+    # Spine1 to leaves
+    - endpoints: ["spine1:e1-1", "leaf1:e1-49"]
+    - endpoints: ["spine1:e1-2", "leaf2:e1-49"]
+    - endpoints: ["spine1:e1-3", "leaf3:e1-49"]
+    - endpoints: ["spine1:e1-4", "leaf4:e1-49"]
+    # Spine2 to leaves
+    - endpoints: ["spine2:e1-1", "leaf1:e1-50"]
+    - endpoints: ["spine2:e1-2", "leaf2:e1-50"]
+    - endpoints: ["spine2:e1-3", "leaf3:e1-50"]
+    - endpoints: ["spine2:e1-4", "leaf4:e1-50"]
+    # Leaf to host
+    - endpoints: ["leaf1:e1-1", "host1:eth1"]
+    - endpoints: ["leaf2:e1-1", "host2:eth1"]
+    - endpoints: ["leaf3:e1-1", "host3:eth1"]
+    - endpoints: ["leaf4:e1-1", "host4:eth1"]

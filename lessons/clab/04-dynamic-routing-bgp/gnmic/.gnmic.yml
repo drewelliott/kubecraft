@@ -1,0 +1,18 @@
+# gNMIc configuration for the dynamic routing lab
+# Usage: run gnmic commands from this directory
+#
+# Query all routers at once:
+#   gnmic get --path /network-instance[name=default]/protocols/bgp/neighbor --type state
+#
+# Target a specific router:
+#   gnmic -a clab-dynamic-routing-bgp-srl1:57400 get --path /system/name --type state
+
+encoding: json_ietf
+skip-verify: true
+username: admin
+password: NokiaSrl1!
+
+targets:
+  clab-dynamic-routing-bgp-srl1:57400:
+  clab-dynamic-routing-bgp-srl2:57400:
+  clab-dynamic-routing-bgp-srl3:57400:

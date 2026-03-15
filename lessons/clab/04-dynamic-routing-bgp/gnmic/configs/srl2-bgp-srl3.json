@@ -1,0 +1,10 @@
+[
+  {
+    "path": "/network-instance[name=default]/protocols/bgp/neighbor[peer-address=10.1.6.2]",
+    "value": {
+      "admin-state": "enable",
+      "peer-as": 65003,
+      "peer-group": "ebgp-peers"
+    }
+  }
+]

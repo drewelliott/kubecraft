@@ -240,7 +240,7 @@ containerlab deploy -t topology/lab.clab.yml --debug
 
 ## Navigation
 
-Previous: [Lesson 2: IP Fundamentals](../02-ip-fundamentals/) | [Course Index](../README.md) | Next: Lesson 4: Dynamic Routing Protocols (coming soon)
+Previous: [Lesson 2: IP Fundamentals](../02-ip-fundamentals/) | [Course Index](../README.md) | Next: [Lesson 4: Dynamic Routing with BGP](../04-dynamic-routing-bgp/)
 
 ## Additional Resources
 
