@@ -11,13 +11,8 @@ graph LR
     L0[Lesson 0: Docker Networking] --> L1[Lesson 1: Containerlab Primer]
     L1 --> L2[Lesson 2: IP Fundamentals]
     L2 --> L3[Lesson 3: Routing Basics]
-    L3 --> L4[Lesson 4: Data Center]
-    L3 --> L5[Lesson 5: Cloud Patterns]
-    L3 --> L6[Lesson 6: Edge/WAN]
-    L4 --> L7[Lesson 7: Troubleshooting]
-    L5 --> L7
-    L6 --> L7
-    L7 --> L8[Lesson 8: Capstone]
+    L3 --> L4[Lesson 4: Dynamic Routing Protocols]
+    L4 --> L5[Lessons 5+: Coming Soon]
 ```
 
 ## Lessons
@@ -27,12 +22,8 @@ graph LR
 | 0 | [Docker Networking Fundamentals](00-docker-networking/) | Bridge, host, namespaces | Docker Compose |
 | 1 | [Containerlab Primer](01-containerlab-primer/) | Setup, topology files, first lab | Git |
 | 2 | [IP Fundamentals & Connectivity](02-ip-fundamentals/) | Addressing, subnets, ping | Ansible intro |
-| 3 | Routing Basics | Static routes, routing tables | Ansible playbooks |
-| 4 | Data Center - Spine-Leaf | BGP, EVPN-VXLAN | Terraform |
-| 5 | Cloud Provider Patterns | VPC simulation, hybrid | ArgoCD patterns |
-| 6 | Edge & WAN Networking | Site-to-site, NAT | Ansible + Jinja2 |
-| 7 | Network Troubleshooting | Diagnostics, packet capture | pytest |
-| 8 | Capstone Project | Full GitOps workflow | Full pipeline |
+| 3 | [Routing Basics & Static Routes](03-routing-basics/) | Static routes, routing tables | Ansible playbooks |
+| 4 | Dynamic Routing Protocols | Coming soon | TBD |
 
 ## Learning Path
 
@@ -41,18 +32,13 @@ Start here. These lessons build core skills:
 - Docker networking concepts
 - Containerlab basics
 - IP addressing and connectivity
-- Basic routing
+- Static routing and troubleshooting
 
-### Domain-Specific (Lessons 4-6)
-Choose based on your needs:
-- **Data Center** - If you work with Kubernetes clusters, microservices
-- **Cloud Patterns** - If you work with AWS/Azure/GCP
-- **Edge/WAN** - If you work with distributed systems, multi-site
+### Dynamic Routing (Lesson 4)
+- Dynamic routing protocols (BGP, OSPF)
 
-### Skills & Capstone (Lessons 7-8)
-Complete these to solidify learning:
-- Troubleshooting methodology
-- Putting it all together
+### Future Lessons
+Additional lessons are in development. Check back for updates.
 
 ## How Each Lesson Works
 

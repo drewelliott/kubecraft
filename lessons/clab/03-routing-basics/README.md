@@ -115,7 +115,7 @@ Trace host2 (`10.1.4.2`) to host3 (`10.1.5.2`) through the hub:
 
 ### 6. Recap + Teaser (30 sec)
 
-Static routes work for small topologies. But what happens when you have 50 routers? Or 500? You can't manually configure every route. Lesson 4 introduces dynamic routing with BGP.
+Static routes work for small topologies. But what happens when you have 50 routers? Or 500? You can't manually configure every route. Lesson 4 introduces dynamic routing protocols.
 
 ## Lab Topology
 
@@ -240,7 +240,7 @@ containerlab deploy -t topology/lab.clab.yml --debug
 
 ## Navigation
 
-Previous: [Lesson 2: IP Fundamentals](../02-ip-fundamentals/) | [Course Index](../README.md) | Next: Lesson 4 (coming soon)
+Previous: [Lesson 2: IP Fundamentals](../02-ip-fundamentals/) | [Course Index](../README.md) | Next: Lesson 4: Dynamic Routing Protocols (coming soon)
 
 ## Additional Resources
 
