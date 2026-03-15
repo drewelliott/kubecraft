@@ -1,0 +1,298 @@
+# Lesson 5: Spine-Leaf Networking with BGP
+
+Deploy a CLOS spine-leaf fabric with eBGP underlay, observe ECMP across spines, and test fabric resilience.
+
+## Objectives
+
+By the end of this lesson, you will be able to:
+
+- [ ] Explain CLOS/spine-leaf architecture and why it replaced traditional hub-and-spoke in data centers
+- [ ] Deploy a multi-tier fabric topology with containerlab
+- [ ] Configure eBGP underlay using RFC 7938 ASN-per-device model
+- [ ] Use gNMIc to configure and verify BGP across a 6-router fabric
+- [ ] Observe ECMP (equal-cost multipath) across spines
+- [ ] Diagnose fabric failures: spine loss, ECMP path changes
+
+## Prerequisites
+
+- Completed Lesson 0: Docker Networking Fundamentals
+- Completed Lesson 1: Containerlab Primer
+- Completed Lesson 2: IP Fundamentals
+- Completed Lesson 3: Routing Basics & Static Routes
+- Completed Lesson 4: Dynamic Routing with BGP
+- gNMIc installed (`gnmic version`) -- install with `brew install gnmic`
+- Minimum 16 GB RAM recommended (10 containers)
+
+## Video Outline
+
+### 1. Why Spine-Leaf? (2 min)
+
+In Lesson 4, our hub-and-spoke topology funneled all traffic through a single hub router. That creates a bottleneck -- the hub becomes a single point of failure and a bandwidth chokepoint. Traditional 3-tier data center networks (core/distribution/access) suffered the same problem, relying on Spanning Tree Protocol to block redundant links and prevent loops.
+
+CLOS spine-leaf architecture eliminates these problems:
+
+| Approach | Bottleneck? | Redundancy | Scaling |
+|----------|-------------|------------|---------|
+| Hub-and-spoke | Yes -- single hub | Single point of failure | Add spokes, hub overloads |
+| 3-tier (core/dist/access) | Yes -- spanning tree blocks links | Active/standby paths | Complex, wasteful |
+| CLOS spine-leaf | No -- all paths active (ECMP) | Any spine can fail | Add spines or leaves independently |
+
+### 2. CLOS Topology Design (2 min)
+
+In a CLOS fabric, every leaf connects to every spine. There are no leaf-to-leaf or spine-to-spine links. This creates a predictable, non-oversubscribed network where every leaf-to-leaf path crosses exactly one spine.
+
+Key design principles:
+
+- **/31 point-to-point links** between each spine-leaf pair (no wasted IPs)
+- **RFC 7938 eBGP with ASN-per-device** -- each router gets a unique AS number, making every link an eBGP session
+- **No oversubscription between tiers** -- aggregate leaf uplink bandwidth equals spine capacity
+- **ECMP across spines** -- traffic between any two leaves is load-balanced across all available spines
+
+### 3. Deploying the Fabric (2 min)
+
+```bash
+# Navigate to lesson directory
+cd lessons/clab/05-spine-leaf-bgp
+
+# Deploy the topology (interfaces pre-configured via startup configs)
+containerlab deploy -t topology/lab.clab.yml
+```
+
+Startup configs in `topology/configs/` handle base interface IP addressing. gNMIc then applies BGP configuration from `gnmic/configs/`.
+
+### 4. Live Demo: Configure and Verify (3 min)
+
+```bash
+# Apply BGP configuration to all 6 routers via gNMIc
+gnmic -a clab-spine-leaf-bgp-spine1:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf set --update-file gnmic/configs/spine1-bgp.json
+gnmic -a clab-spine-leaf-bgp-spine2:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf set --update-file gnmic/configs/spine2-bgp.json
+gnmic -a clab-spine-leaf-bgp-leaf1:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf set --update-file gnmic/configs/leaf1-bgp.json
+gnmic -a clab-spine-leaf-bgp-leaf2:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf set --update-file gnmic/configs/leaf2-bgp.json
+gnmic -a clab-spine-leaf-bgp-leaf3:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf set --update-file gnmic/configs/leaf3-bgp.json
+gnmic -a clab-spine-leaf-bgp-leaf4:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf set --update-file gnmic/configs/leaf4-bgp.json
+```
+
+Verify all 8 BGP sessions are Established:
+
+```bash
+docker exec -it clab-spine-leaf-bgp-spine1 sr_cli -c "show network-instance default protocols bgp neighbor"
+docker exec -it clab-spine-leaf-bgp-spine2 sr_cli -c "show network-instance default protocols bgp neighbor"
+```
+
+Verify ECMP in the routing table -- each leaf should show two equal-cost paths (one via each spine) to every remote host subnet:
+
+```bash
+docker exec -it clab-spine-leaf-bgp-leaf1 sr_cli -c "show network-instance default route-table ipv4-unicast summary"
+```
+
+Verify end-to-end connectivity:
+
+```bash
+docker exec clab-spine-leaf-bgp-host1 ping -c 3 10.20.2.2  # host1 -> host2
+docker exec clab-spine-leaf-bgp-host1 ping -c 3 10.20.3.2  # host1 -> host3
+docker exec clab-spine-leaf-bgp-host1 ping -c 3 10.20.4.2  # host1 -> host4
+```
+
+### 5. Live Demo: Spine Failure and Recovery (2 min)
+
+```bash
+# Shut down spine1 -- traffic redistributes through spine2
+docker stop clab-spine-leaf-bgp-spine1
+
+# Verify connectivity still works (single path through spine2)
+docker exec clab-spine-leaf-bgp-host1 ping -c 3 10.20.2.2
+
+# Check routing table -- only one path per destination now
+docker exec -it clab-spine-leaf-bgp-leaf1 sr_cli -c "show network-instance default route-table ipv4-unicast summary"
+
+# Bring spine1 back -- ECMP restores
+docker start clab-spine-leaf-bgp-spine1
+
+# Verify ECMP is restored (two paths per destination)
+docker exec -it clab-spine-leaf-bgp-leaf1 sr_cli -c "show network-instance default route-table ipv4-unicast summary"
+```
+
+### 6. Recap + Teaser (30 sec)
+
+Pure L3 gets packets between racks. But what about VMs or containers on the same subnet across racks? EVPN/VXLAN -- coming next.
+
+## Lab Topology
+
+> **Note:** This lab runs 10 containers (6 SR Linux + 4 Alpine). Minimum 16 GB RAM recommended.
+
+```mermaid
+graph TB
+    spine1[spine1<br/>SR Linux<br/>AS 65100] --- leaf1[leaf1<br/>SR Linux<br/>AS 65001]
+    spine1 --- leaf2[leaf2<br/>SR Linux<br/>AS 65002]
+    spine1 --- leaf3[leaf3<br/>SR Linux<br/>AS 65003]
+    spine1 --- leaf4[leaf4<br/>SR Linux<br/>AS 65004]
+    spine2[spine2<br/>SR Linux<br/>AS 65101] --- leaf1
+    spine2 --- leaf2
+    spine2 --- leaf3
+    spine2 --- leaf4
+    leaf1 --- host1[host1<br/>Alpine<br/>10.20.1.2/24]
+    leaf2 --- host2[host2<br/>Alpine<br/>10.20.2.2/24]
+    leaf3 --- host3[host3<br/>Alpine<br/>10.20.3.2/24]
+    leaf4 --- host4[host4<br/>Alpine<br/>10.20.4.2/24]
+```
+
+## IP Addressing
+
+### Spine-Leaf Links (/31 point-to-point)
+
+| Link | Subnet | Spine IP | Leaf IP |
+|------|--------|----------|---------|
+| spine1 -- leaf1 | `10.10.1.0/31` | `10.10.1.0` | `10.10.1.1` |
+| spine1 -- leaf2 | `10.10.1.2/31` | `10.10.1.2` | `10.10.1.3` |
+| spine1 -- leaf3 | `10.10.1.4/31` | `10.10.1.4` | `10.10.1.5` |
+| spine1 -- leaf4 | `10.10.1.6/31` | `10.10.1.6` | `10.10.1.7` |
+| spine2 -- leaf1 | `10.10.2.0/31` | `10.10.2.0` | `10.10.2.1` |
+| spine2 -- leaf2 | `10.10.2.2/31` | `10.10.2.2` | `10.10.2.3` |
+| spine2 -- leaf3 | `10.10.2.4/31` | `10.10.2.4` | `10.10.2.5` |
+| spine2 -- leaf4 | `10.10.2.6/31` | `10.10.2.6` | `10.10.2.7` |
+
+### Host Subnets
+
+| Leaf | Host Subnet | Leaf IP | Host IP |
+|------|-------------|---------|---------|
+| leaf1 | `10.20.1.0/24` | `10.20.1.1` | `10.20.1.2` |
+| leaf2 | `10.20.2.0/24` | `10.20.2.1` | `10.20.2.2` |
+| leaf3 | `10.20.3.0/24` | `10.20.3.1` | `10.20.3.2` |
+| leaf4 | `10.20.4.0/24` | `10.20.4.1` | `10.20.4.2` |
+
+Convention: routers get `.1`, hosts get `.2`.
+
+## BGP Design
+
+| Device | ASN | Router-ID | Peer Group | Neighbors |
+|--------|-----|-----------|------------|-----------|
+| spine1 | 65100 | 10.0.1.1 | leaves | leaf1 (`10.10.1.1`), leaf2 (`10.10.1.3`), leaf3 (`10.10.1.5`), leaf4 (`10.10.1.7`) |
+| spine2 | 65101 | 10.0.1.2 | leaves | leaf1 (`10.10.2.1`), leaf2 (`10.10.2.3`), leaf3 (`10.10.2.5`), leaf4 (`10.10.2.7`) |
+| leaf1 | 65001 | 10.0.2.1 | spines | spine1 (`10.10.1.0`), spine2 (`10.10.2.0`) |
+| leaf2 | 65002 | 10.0.2.2 | spines | spine1 (`10.10.1.2`), spine2 (`10.10.2.2`) |
+| leaf3 | 65003 | 10.0.2.3 | spines | spine1 (`10.10.1.4`), spine2 (`10.10.2.4`) |
+| leaf4 | 65004 | 10.0.2.4 | spines | spine1 (`10.10.1.6`), spine2 (`10.10.2.6`) |
+
+Total unique BGP sessions: 8 (4 leaves x 2 spines)
+
+All routers use export policy `export-connected` (matches protocol local, accepts).
+
+## Why This Matters for Kubernetes
+
+| CLOS Concept | Kubernetes Equivalent |
+|---|---|
+| Spine-leaf fabric | Physical underlay for K8s nodes across racks |
+| ECMP across spines | Load balancing across multiple network paths to nodes |
+| Spine failure / path redistribution | Node or network failure triggering pod rescheduling |
+| ASN-per-device (RFC 7938) | Calico BGP peering with unique ASN per node or rack |
+| Leaf as top-of-rack switch | Network boundary for a rack of K8s worker nodes |
+| Horizontal scaling (add leaves) | Adding racks of worker nodes without redesigning the network |
+
+In production Kubernetes clusters, the physical network underneath is almost always a CLOS spine-leaf fabric. Understanding how ECMP, spine failures, and BGP convergence work at this layer helps you troubleshoot connectivity issues that look like "Kubernetes problems" but are actually fabric problems.
+
+## Files in This Lesson
+
+```
+05-spine-leaf-bgp/
+├── README.md              # This file
+├── topology/
+│   ├── lab.clab.yml       # 10-node spine-leaf topology
+│   └── configs/
+│       ├── spine1-base.cli  # spine1 startup config (interfaces)
+│       ├── spine2-base.cli  # spine2 startup config (interfaces)
+│       ├── leaf1-base.cli   # leaf1 startup config (interfaces)
+│       ├── leaf2-base.cli   # leaf2 startup config (interfaces)
+│       ├── leaf3-base.cli   # leaf3 startup config (interfaces)
+│       └── leaf4-base.cli   # leaf4 startup config (interfaces)
+├── gnmic/
+│   ├── .gnmic.yml         # gNMIc global settings
+│   └── configs/
+│       ├── spine1-bgp.json  # spine1 BGP config
+│       ├── spine2-bgp.json  # spine2 BGP config
+│       ├── leaf1-bgp.json   # leaf1 BGP config
+│       ├── leaf2-bgp.json   # leaf2 BGP config
+│       ├── leaf3-bgp.json   # leaf3 BGP config
+│       └── leaf4-bgp.json   # leaf4 BGP config
+├── exercises/
+│   └── README.md          # Hands-on exercises
+├── solutions/
+│   └── README.md          # Exercise solutions
+├── tests/
+│   ├── README.md          # Test documentation
+│   └── test_spine_leaf.py # Automated validation
+└── script.md              # Video script
+```
+
+## Key Commands Reference
+
+| Command | Purpose |
+|---------|---------|
+| `containerlab deploy -t topology/lab.clab.yml` | Deploy the lab |
+| `containerlab destroy -t topology/lab.clab.yml --cleanup` | Destroy the lab |
+| `gnmic -a HOST:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf set --update-file FILE` | Apply config via gNMIc |
+| `gnmic -a HOST:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf get --path PATH --type state` | Read state via gNMIc |
+| `docker exec -it clab-spine-leaf-bgp-spine1 sr_cli` | Connect to spine1 CLI |
+| `show network-instance default protocols bgp neighbor` | SR Linux: BGP neighbor summary |
+| `show network-instance default protocols bgp neighbor X detail` | SR Linux: BGP neighbor detail |
+| `show network-instance default route-table ipv4-unicast summary` | SR Linux: routing table |
+
+## Exercises
+
+Complete the exercises in [exercises/README.md](exercises/README.md).
+
+## Common Issues
+
+**BGP session is Established but no routes:**
+```bash
+# SR Linux default-deny export policy -- verify export policy exists and is applied
+docker exec -it clab-spine-leaf-bgp-leaf1 sr_cli -c "show network-instance default protocols bgp neighbor"
+
+# Check if routes are being advertised
+docker exec -it clab-spine-leaf-bgp-leaf1 sr_cli -c "show network-instance default protocols bgp neighbor 10.10.1.0 advertised-routes ipv4"
+```
+
+**BGP session stuck in Active/Connect:**
+```bash
+# Check that peer-as matches on both sides
+docker exec -it clab-spine-leaf-bgp-spine1 sr_cli -c "info network-instance default protocols bgp neighbor 10.10.1.1"
+docker exec -it clab-spine-leaf-bgp-leaf1 sr_cli -c "info network-instance default protocols bgp neighbor 10.10.1.0"
+
+# Verify interface IPs are correct and reachable
+docker exec -it clab-spine-leaf-bgp-spine1 sr_cli -c "show interface ethernet-1/1 brief"
+```
+
+**No ECMP -- only one path in the routing table:**
+```bash
+# Verify both spines have Established sessions with the leaf
+docker exec -it clab-spine-leaf-bgp-leaf1 sr_cli -c "show network-instance default protocols bgp neighbor"
+
+# Check that ECMP is enabled (SR Linux enables it by default for BGP)
+docker exec -it clab-spine-leaf-bgp-leaf1 sr_cli -c "show network-instance default route-table ipv4-unicast summary"
+```
+
+**Lab won't deploy (resource issues):**
+```bash
+# Check available memory -- this lab needs ~16 GB
+free -h
+
+# Check Docker is running
+docker ps
+
+# Look for port or name conflicts with existing labs
+containerlab inspect --all
+
+# Try with debug output
+containerlab deploy -t topology/lab.clab.yml --debug
+```
+
+## Navigation
+
+Previous: [Lesson 4: Dynamic Routing with BGP](../04-dynamic-routing-bgp/) | [Course Index](../README.md) | Next: Coming soon
+
+## Additional Resources
+
+- [RFC 7938 - Use of BGP in Large-Scale Data Centers](https://datatracker.ietf.org/doc/html/rfc7938)
+- [SR Linux BGP Configuration](https://documentation.nokia.com/srlinux/)
+- [gNMIc Documentation](https://gnmic.openconfig.net/)
+- [Containerlab Topology Reference](https://containerlab.dev/manual/topo-def-file/)
+- [CLOS Network Architecture (Wikipedia)](https://en.wikipedia.org/wiki/Clos_network)
