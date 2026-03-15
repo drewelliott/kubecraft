@@ -5,9 +5,10 @@
 # main = student-facing view (clean, no instructor content)
 # instructor = full working branch (student + instructor content)
 #
-# Uses the "gh-pages pattern": main has its own independent commit history
-# (no shared ancestry with instructor) so GitHub never shows misleading
-# ahead/behind counts between the two branches.
+# Uses the "gh-pages pattern": each sync builds a fresh tree object and
+# creates a commit whose only parent is the previous main tip. This gives
+# main its own linear history with no shared ancestry to instructor, so
+# GitHub never shows misleading ahead/behind counts.
 
 name: Sync student branch
 
@@ -27,21 +28,18 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: instructor
-          path: source
+          fetch-depth: 0
 
-      - name: Checkout main branch
-        uses: actions/checkout@v4
-        with:
-          ref: main
-          path: target
-        continue-on-error: true
-
-      - name: Build filtered student view
+      - name: Build filtered tree and push to main
         run: |
-          # Start with a clean copy of instructor content (excluding .git)
-          rsync -a --exclude='.git' source/ target/
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          cd target
+          # Build the filtered file set in a temp directory
+          WORK=$(mktemp -d)
+          rsync -a --exclude='.git' ./ "$WORK/"
+
+          cd "$WORK"
 
           # Read .admin-files manifest and remove matching files
           if [ -f .admin-files ]; then
@@ -49,53 +47,72 @@ jobs:
               # Skip comments and blank lines
               [[ "$pattern" =~ ^[[:space:]]*#.*$ || -z "${pattern// }" ]] && continue
 
-              # Expand glob and remove matches
-              # Use bash globbing with nullglob to handle patterns safely
               shopt -s globstar nullglob
-              matched=0
               for f in $pattern; do
                 if [ -e "$f" ]; then
                   echo "  - $f"
                   rm -rf "$f"
-                  matched=1
                 fi
               done
               shopt -u globstar nullglob
-
-              if [ "$matched" -eq 1 ]; then
-                echo "Removed pattern '$pattern'"
-              fi
             done < .admin-files
           fi
 
-          # Remove the workflow itself and .admin-files from the student branch
+          # Remove the workflow itself and .admin-files
           rm -rf .github/workflows/sync-student-branch.yml
           rm -f .admin-files
 
-          # Clean up empty directories left behind
-          find . -type d -empty -not -path './.git/*' -delete 2>/dev/null || true
+          # Clean up empty directories
+          find . -type d -empty -delete 2>/dev/null || true
 
-      - name: Commit and force-push to main
-        run: |
-          cd target
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Go back to the repo with git objects
+          cd "$GITHUB_WORKSPACE"
 
-          # If main didn't exist yet, initialize a fresh orphan branch
-          if [ ! -d .git ]; then
-            git init
-            git checkout --orphan main
+          # Write the filtered tree into git's object store
+          TREE=$(git -C "$GITHUB_WORKSPACE" --work-tree="$WORK" add --all --dry-run 2>/dev/null || true)
+          # Use a temporary index to build the tree from the filtered files
+          export GIT_INDEX_FILE=$(mktemp)
+          rm -f "$GIT_INDEX_FILE"
+          git --work-tree="$WORK" add --all
+          NEW_TREE=$(git write-tree)
+
+          # Determine the parent commit for the new main commit.
+          # If main exists and has NO shared ancestry with instructor,
+          # use it as parent (preserving main's independent linear history).
+          # If main shares ancestry with instructor (legacy) or doesn't
+          # exist, create a fresh orphan root to cleanly sever the histories.
+          PARENT=""
+          MAIN_TIP=$(git rev-parse --verify refs/remotes/origin/main 2>/dev/null || true)
+
+          if [ -n "$MAIN_TIP" ]; then
+            # Check if the tree has changed
+            OLD_TREE=$(git rev-parse "${MAIN_TIP}^{tree}" 2>/dev/null || true)
+            if [ "$NEW_TREE" = "$OLD_TREE" ]; then
+              echo "No changes to sync"
+              exit 0
+            fi
+
+            # Check for shared ancestry with instructor
+            MERGE_BASE=$(git merge-base "$MAIN_TIP" HEAD 2>/dev/null || true)
+            if [ -z "$MERGE_BASE" ]; then
+              # No shared ancestry — main is already independent, chain onto it
+              PARENT="$MAIN_TIP"
+              echo "Main has independent history, chaining new commit"
+            else
+              # Shared ancestry detected — sever it with an orphan root
+              echo "Shared ancestry detected, creating orphan root to sever histories"
+            fi
           fi
 
-          git add -A
-
-          # Only commit and push if there are actual changes
-          if git diff --cached --quiet; then
-            echo "No changes to sync"
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          if [ -n "$PARENT" ]; then
+            NEW_COMMIT=$(git commit-tree "$NEW_TREE" -p "$PARENT" \
+              -m "sync: update student branch from instructor@${SHORT_SHA}")
           else
-            SHORT_SHA=$(cd ../source && git rev-parse --short HEAD)
-            git commit -m "sync: update student branch from instructor@${SHORT_SHA}"
-            git push --force "https://x-access-token:${GITHUB_TOKEN}" HEAD:main
+            NEW_COMMIT=$(git commit-tree "$NEW_TREE" \
+              -m "sync: initial student branch from instructor@${SHORT_SHA}")
           fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+          git push --force origin "${NEW_COMMIT}:refs/heads/main"
+
+          rm -rf "$WORK"
