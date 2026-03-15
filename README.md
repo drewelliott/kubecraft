@@ -19,18 +19,14 @@ You know Docker, Linux, and Kubernetes. You don't know (or want to know more abo
 ## What You'll Learn
 
 ```
-Lesson 0   Docker Networking         Linux bridges, namespaces, veth pairs, NAT
-Lesson 1   Containerlab Primer       Topology files, deploy/destroy, SR Linux CLI
-Lesson 2   IP Fundamentals           Addressing, subnets, Ansible + Jinja2 automation
-Lesson 3   Routing Basics            Static routes, routing tables            (coming soon)
-Lesson 4   Data Center Spine-Leaf    BGP, EVPN-VXLAN, Terraform              (coming soon)
-Lesson 5   Cloud Provider Patterns   VPC simulation, hybrid connectivity     (coming soon)
-Lesson 6   Edge & WAN                Site-to-site, NAT, network services     (coming soon)
-Lesson 7   Network Troubleshooting   Diagnostics, packet capture, pytest     (coming soon)
-Lesson 8   Capstone Project          Full GitOps pipeline                    (coming soon)
+Lesson 0   Docker Networking              Linux bridges, namespaces, veth pairs, NAT
+Lesson 1   Containerlab Primer            Topology files, deploy/destroy, SR Linux CLI
+Lesson 2   IP Fundamentals                Addressing, subnets, Ansible + Jinja2 automation
+Lesson 3   Routing Basics                 Static routes, routing tables, break/fix labs
+Lesson 4   Dynamic Routing Protocols      Coming soon
 ```
 
-Each lesson introduces a new automation tool alongside networking concepts -- Git, Ansible, Terraform, ArgoCD patterns, pytest -- so you build DevOps muscle memory, not just networking knowledge.
+Each lesson introduces automation tools alongside networking concepts -- Git, Ansible, Jinja2 -- so you build DevOps muscle memory, not just networking knowledge.
 
 > **[Browse the full course outline and lesson details](lessons/clab/)**
 
