@@ -2,43 +2,28 @@
 
 Reference solutions for the Dynamic Routing with BGP exercises.
 
-## Exercise 1: Deploy and Verify Baseline
+## Exercise 1: Deploy and Configure eBGP
 
-**Cross-subnet pings (all succeed with static routes):**
+**Step 1: Deploy the topology.**
 
 ```bash
-$ docker exec clab-dynamic-routing-bgp-host1 ping -c 3 10.1.4.2
+$ cd lessons/clab/04-dynamic-routing-bgp
+$ containerlab deploy -t topology/lab.clab.yml
+```
+
+**Steps 3-4: Cross-subnet pings FAIL -- only local routes exist.**
+
+```bash
+$ docker exec clab-dynamic-routing-bgp-host1 ping -c 2 -W 3 10.1.4.2
 PING 10.1.4.2 (10.1.4.2): 56 data bytes
-64 bytes from 10.1.4.2: seq=0 ttl=62 time=2.345 ms
-64 bytes from 10.1.4.2: seq=1 ttl=62 time=1.123 ms
-64 bytes from 10.1.4.2: seq=2 ttl=62 time=0.987 ms
+
 --- 10.1.4.2 ping statistics ---
-3 packets transmitted, 3 packets received, 0% packet loss
+2 packets transmitted, 0 packets received, 100% packet loss
 ```
 
-```bash
-$ docker exec clab-dynamic-routing-bgp-host1 ping -c 3 10.1.5.2
-PING 10.1.5.2 (10.1.5.2): 56 data bytes
-64 bytes from 10.1.5.2: seq=0 ttl=62 time=2.456 ms
-64 bytes from 10.1.5.2: seq=1 ttl=62 time=1.234 ms
-64 bytes from 10.1.5.2: seq=2 ttl=62 time=1.012 ms
---- 10.1.5.2 ping statistics ---
-3 packets transmitted, 3 packets received, 0% packet loss
-```
+Each router only knows about its directly connected subnets. srl1 has no route to 10.1.4.0/24 (host2's subnet), so it drops the packet.
 
-```bash
-$ docker exec clab-dynamic-routing-bgp-host2 ping -c 3 10.1.5.2
-PING 10.1.5.2 (10.1.5.2): 56 data bytes
-64 bytes from 10.1.5.2: seq=0 ttl=61 time=3.456 ms
-64 bytes from 10.1.5.2: seq=1 ttl=61 time=2.123 ms
-64 bytes from 10.1.5.2: seq=2 ttl=61 time=1.876 ms
---- 10.1.5.2 ping statistics ---
-3 packets transmitted, 3 packets received, 0% packet loss
-```
-
-This is the lesson 03 end state. Static routes provide full connectivity. All cross-subnet traffic flows through srl1 (the hub) because it is the only router with routes to every subnet.
-
-**Routing table on srl1 (all routes are `static`):**
+**Routing table on srl1 (only `local` routes):**
 
 ```
 A:srl1# show network-instance default route-table ipv4-unicast summary
@@ -48,12 +33,10 @@ A:srl1# show network-instance default route-table ipv4-unicast summary
 | 10.1.1.0/24| local | net_inst   | ethernet-1/1.0    | 0        |
 | 10.1.2.0/24| local | net_inst   | ethernet-1/2.0    | 0        |
 | 10.1.3.0/24| local | net_inst   | ethernet-1/3.0    | 0        |
-| 10.1.4.0/24| static| static     | 10.1.2.2          | 1        |
-| 10.1.5.0/24| static| static     | 10.1.3.2          | 1        |
 +------------+-------+------------+-------------------+----------+
 ```
 
-Note the `static` type on the remote subnets. These are the manually configured routes from lesson 03. The `local` routes are automatically created for directly connected interfaces.
+Only the three directly connected subnets appear. No remote subnets -- routers have no way to reach each other's hosts.
 
 **Unconfigured srl2-srl3 link (ethernet-1/3 on srl2):**
 
@@ -68,49 +51,9 @@ A:srl2# show interface ethernet-1/3
 ===============================================================================
 ```
 
-ethernet-1/3 is physically up (the cable is wired in the topology) but has no subinterface configured and is not assigned to a network instance. This link will be activated in exercise 3.
+ethernet-1/3 is physically up (the cable is wired in the topology) but has no subinterface configured and is not assigned to a network instance. This link will be activated in exercise 2.
 
----
-
-## Exercise 2: Replace Static Routes with eBGP
-
-**Step 1: Delete static routes on all routers using gNMIc.**
-
-```bash
-$ gnmic -a clab-dynamic-routing-bgp-srl1:57400 -u admin -p NokiaSrl1! \
-    --skip-verify -e json_ietf set \
-    --delete /network-instance[name=default]/static-routes \
-    --delete /network-instance[name=default]/next-hop-groups
-{
-  "time": "2026-03-15T12:00:01Z",
-  "results": [
-    {
-      "operation": "DELETE",
-      "path": "network-instance[name=default]/static-routes"
-    },
-    {
-      "operation": "DELETE",
-      "path": "network-instance[name=default]/next-hop-groups"
-    }
-  ]
-}
-```
-
-Repeat for srl2 and srl3 (changing `-a` to `clab-dynamic-routing-bgp-srl2:57400` and `clab-dynamic-routing-bgp-srl3:57400`). An empty or acknowledgment response with no errors means the delete succeeded.
-
-**Step 2: Cross-subnet pings now FAIL.**
-
-```bash
-$ docker exec clab-dynamic-routing-bgp-host1 ping -c 2 -W 3 10.1.4.2
-PING 10.1.4.2 (10.1.4.2): 56 data bytes
-
---- 10.1.4.2 ping statistics ---
-2 packets transmitted, 0 packets received, 100% packet loss
-```
-
-With the static routes removed, each router only knows about its directly connected subnets. srl1 has no route to 10.1.4.0/24 (host2's subnet), so it drops the packet. This is the same broken state from lesson 02.
-
-**Step 3: Apply BGP configuration via gNMIc.**
+**Step 6: Apply BGP configuration via gNMIc.**
 
 ```bash
 $ gnmic -a clab-dynamic-routing-bgp-srl1:57400 -u admin -p NokiaSrl1! \
@@ -132,7 +75,7 @@ $ gnmic -a clab-dynamic-routing-bgp-srl1:57400 -u admin -p NokiaSrl1! \
 
 Repeat for srl2 and srl3 with their respective config files. Each config creates the `export-connected` routing policy and enables BGP with the appropriate AS number and neighbors.
 
-**Step 4: BGP neighbors all Established.**
+**Step 7: BGP neighbors all Established.**
 
 ```
 A:srl1# show network-instance default protocols bgp neighbor
@@ -150,7 +93,7 @@ A:srl1# show network-instance default protocols bgp neighbor
 
 Both sessions show `established` -- the only healthy BGP state. srl1 receives 2 routes from each peer: srl2 advertises 10.1.2.0/24 and 10.1.4.0/24 (its connected subnets), and srl3 advertises 10.1.3.0/24 and 10.1.5.0/24.
 
-**Step 5: Cross-subnet pings work again.**
+**Step 8: Cross-subnet pings now work.**
 
 ```bash
 $ docker exec clab-dynamic-routing-bgp-host1 ping -c 3 10.1.4.2
@@ -162,7 +105,7 @@ PING 10.1.4.2 (10.1.4.2): 56 data bytes
 3 packets transmitted, 3 packets received, 0% packet loss
 ```
 
-**Step 6: Routing table now shows `bgp` instead of `static`.**
+**Step 9: Routing table now shows `bgp` routes for remote subnets.**
 
 ```
 A:srl1# show network-instance default route-table ipv4-unicast summary
@@ -177,22 +120,20 @@ A:srl1# show network-instance default route-table ipv4-unicast summary
 +------------+-------+------------+-------------------+----------+
 ```
 
-**Side-by-side comparison:**
+**Before and after comparison:**
 
-| Prefix | Before (static) | After (BGP) |
-|--------|-----------------|-------------|
-| 10.1.4.0/24 | Type: `static`, Owner: `static`, Metric: 1 | Type: `bgp`, Owner: `bgp_mgr`, Metric: 0 |
-| 10.1.5.0/24 | Type: `static`, Owner: `static`, Metric: 1 | Type: `bgp`, Owner: `bgp_mgr`, Metric: 0 |
+| Prefix | Before (no routes) | After (BGP) |
+|--------|-------------------|-------------|
+| 10.1.4.0/24 | Not present -- dropped | Type: `bgp`, Owner: `bgp_mgr`, Metric: 0 |
+| 10.1.5.0/24 | Not present -- dropped | Type: `bgp`, Owner: `bgp_mgr`, Metric: 0 |
 
-The next-hops are identical -- the same routers are reachable via the same interfaces. What changed is how the routes were learned. Static routes were manually configured; BGP routes were dynamically exchanged between peers.
+Before BGP, routers only knew their directly connected subnets. Packets to remote subnets were dropped because there was no route. After BGP, each router learned about remote subnets from its peers and installed them in the forwarding table automatically.
 
-**Why we delete static routes first:** On SR Linux, static routes have an administrative distance of 5 while BGP routes have an administrative distance of 170. Lower administrative distance wins. If you apply BGP config without removing the static routes first, the BGP routes are learned but never installed in the forwarding table because the static routes have priority. The routing table would still show `static` and you would think BGP was broken. Deleting the static routes first ensures BGP routes are the only option and get installed immediately.
-
-**Key lesson:** Administrative distance determines which routing source is trusted most. Static routes (distance 5) beat BGP (distance 170) on SR Linux. When migrating from static to dynamic routing, always remove the static routes or the old routes will mask the new ones.
+**Key lesson:** Without a routing protocol, routers are islands -- they only know about their own interfaces. BGP bridges the gap by having routers exchange reachability information with their peers. No manual route configuration is needed.
 
 ---
 
-## Exercise 3: Enable Direct Link and Path Selection
+## Exercise 2: Enable Direct Link and Path Selection
 
 **Step 1: Traceroute BEFORE the new link (3 router hops through the hub).**
 
@@ -314,7 +255,7 @@ In lesson 03, adding a cable accomplished nothing. The physical link existed, bu
 
 ---
 
-## Exercise 4: Break/Fix -- Missing Export Policy
+## Exercise 3: Break/Fix -- Missing Export Policy
 
 **Symptom: host1 and host2 cannot reach host3, but host3 can reach them.**
 
@@ -389,7 +330,7 @@ After restoring the export policy, srl3 immediately sends UPDATE messages contai
 
 ---
 
-## Exercise 5: Break/Fix -- Link Failure with Automatic Reroute
+## Exercise 4: Break/Fix -- Link Failure with Automatic Reroute
 
 **Continuous ping showing loss then recovery:**
 
@@ -458,7 +399,7 @@ The path is now host1 -> srl1 (10.1.1.1) -> srl2 (10.1.2.2) -> srl3 (10.1.6.2) -
 3. But srl1 still had an alternate path: srl2 peers with both srl1 (via 10.1.2.0/24) and srl3 (via 10.1.6.0/24). srl2 learned srl3's routes directly and re-advertised them to srl1 with AS path [65002, 65003].
 4. srl1 installed this alternate path and traffic resumed through srl2.
 
-**In lesson 03 exercise 6, disabling this same interface (ethernet-1/3 on srl1) permanently broke connectivity to host3.** The static route kept pointing at the dead link: the routing table said "send to 10.1.3.2 via ethernet-1/3" but ethernet-1/3 was down, so every packet to host3 was silently dropped. There was no mechanism to detect the failure or find an alternate path. Here, BGP detected the failure and automatically rerouted through the alternate path via srl2. This is the fundamental advantage of dynamic routing.
+**In lesson 03, disabling this same interface (ethernet-1/3 on srl1) permanently broke connectivity to host3.** The static route kept pointing at the dead link: the routing table said "send to 10.1.3.2 via ethernet-1/3" but ethernet-1/3 was down, so every packet to host3 was silently dropped. There was no mechanism to detect the failure or find an alternate path. Here, BGP detected the failure and automatically rerouted through the alternate path via srl2. This is the fundamental advantage of dynamic routing.
 
 **Re-enable the link:**
 
@@ -484,7 +425,7 @@ Traffic shifts back to the direct srl1 -> srl3 path because the direct route has
 
 ---
 
-## Exercise 6: Break/Fix -- Wrong ASN
+## Exercise 5: Break/Fix -- Wrong ASN
 
 **BGP neighbor table on srl2 showing `active` state:**
 
@@ -565,6 +506,102 @@ PING 10.1.1.2 (10.1.1.2): 56 data bytes
 
 ---
 
+## Exercise 6: Break/Fix -- Stale Static Route Masks BGP
+
+**Symptom: host1 cannot reach host2, but can still reach host3.**
+
+```bash
+$ docker exec clab-dynamic-routing-bgp-host1 ping -c 3 -W 5 10.1.4.2
+PING 10.1.4.2 (10.1.4.2): 56 data bytes
+
+--- 10.1.4.2 ping statistics ---
+3 packets transmitted, 0 packets received, 100% packet loss
+
+$ docker exec clab-dynamic-routing-bgp-host1 ping -c 3 10.1.5.2
+PING 10.1.5.2 (10.1.5.2): 56 data bytes
+64 bytes from 10.1.5.2: seq=0 ttl=62 time=2.345 ms
+64 bytes from 10.1.5.2: seq=1 ttl=62 time=1.123 ms
+64 bytes from 10.1.5.2: seq=2 ttl=62 time=0.987 ms
+--- 10.1.5.2 ping statistics ---
+3 packets transmitted, 3 packets received, 0% packet loss
+```
+
+Only one destination is broken. host3 works fine, so BGP itself is healthy.
+
+**Routing table on srl1 showing the static route:**
+
+```
+A:srl1# show network-instance default route-table ipv4-unicast summary
++------------+-------+------------+-------------------+----------+
+|   Prefix   | Type  | Route-Owner| Next-hop          | Metric   |
++============+=======+============+===================+==========+
+| 10.1.1.0/24| local | net_inst   | ethernet-1/1.0    | 0        |
+| 10.1.2.0/24| local | net_inst   | ethernet-1/2.0    | 0        |
+| 10.1.3.0/24| local | net_inst   | ethernet-1/3.0    | 0        |
+| 10.1.4.0/24| static| static     | 10.1.3.2          | 1        |
+| 10.1.5.0/24| bgp   | bgp_mgr   | 10.1.3.2          | 0        |
++------------+-------+------------+-------------------+----------+
+```
+
+The critical clue: 10.1.4.0/24 shows `static` with next-hop 10.1.3.2 (srl3). But host2 is behind srl2, not srl3. The correct next-hop should be 10.1.2.2. BGP knows this -- but the static route wins.
+
+**Why the static route wins:** Every routing source has an administrative distance -- a trust level that determines priority when multiple sources provide a route for the same prefix. On SR Linux:
+
+| Route Source | Administrative Distance |
+|-------------|------------------------|
+| Local/connected | 0 |
+| Static | 5 |
+| BGP | 170 |
+
+Lower distance wins. The static route (distance 5) beats the BGP route (distance 170) for 10.1.4.0/24, even though the BGP route has the correct next-hop. The BGP route is still learned and stored, but it is hidden -- the routing table installs the static route because it is more "trusted."
+
+This is one of the most common production gotchas when migrating from static to dynamic routing. Old static routes left behind will silently override BGP-learned routes. Everything looks healthy -- BGP sessions are established, routes are being exchanged -- but traffic goes to the wrong place because a stale static route has priority.
+
+**BGP neighbors on srl1 (all healthy -- this is the trap):**
+
+```
+A:srl1# show network-instance default protocols bgp neighbor
++---------------+--------+--------+-----------+--------+--------+--------+
+| Peer          | Group  | AS     | Admin     | Session| Rcv    | Active |
+|               |        |        | State     | State  | Routes | Routes |
++===============+========+========+===========+========+========+========+
+| 10.1.2.2      |ebgp-pe | 65002  | enable    |establis| 2      | 1      |
+|               |  ers   |        |           | hed    |        |        |
++---------------+--------+--------+-----------+--------+--------+--------+
+| 10.1.3.2      |ebgp-pe | 65003  | enable    |establis| 2      | 2      |
+|               |  ers   |        |           | hed    |        |        |
++---------------+--------+--------+-----------+--------+--------+--------+
+```
+
+Notice that srl2's session shows `Rcv: 2` but `Active: 1`. srl1 received 2 routes from srl2 (10.1.2.0/24 and 10.1.4.0/24), but only 1 is active -- 10.1.4.0/24 was received but not installed because the static route has a lower administrative distance. This `Rcv > Active` mismatch is the diagnostic clue that another routing source is overriding BGP.
+
+**Fix (delete the stale static route):**
+
+```
+A:srl1# enter candidate
+delete / network-instance default static-routes route 10.1.4.0/24
+delete / network-instance default next-hop-groups group nhg-wrong
+commit now
+```
+
+**Verification:**
+
+```bash
+$ docker exec clab-dynamic-routing-bgp-host1 ping -c 3 10.1.4.2
+PING 10.1.4.2 (10.1.4.2): 56 data bytes
+64 bytes from 10.1.4.2: seq=0 ttl=62 time=2.345 ms
+64 bytes from 10.1.4.2: seq=1 ttl=62 time=1.123 ms
+64 bytes from 10.1.4.2: seq=2 ttl=62 time=0.987 ms
+--- 10.1.4.2 ping statistics ---
+3 packets transmitted, 3 packets received, 0% packet loss
+```
+
+After deleting the static route, the BGP route (with the correct next-hop 10.1.2.2) is immediately promoted from hidden to active. No BGP reconvergence is needed -- the route was already learned, it was just being suppressed.
+
+**Key lesson:** Administrative distance determines which routing source wins when multiple sources provide the same prefix. Static routes (distance 5) beat BGP (distance 170) on SR Linux. When migrating from static to dynamic routing, always clean up old static routes -- they will silently override correct BGP routes. The diagnostic clue is a mismatch between received and active route counts in the BGP neighbor table.
+
+---
+
 ## Key Takeaways
 
 1. **Dynamic routing replaces manual route management with automatic route exchange** -- routers learn about remote subnets from their BGP peers instead of relying on hand-configured static routes
@@ -573,5 +610,5 @@ PING 10.1.1.2 (10.1.1.2): 56 data bytes
 4. **BGP path selection prefers shorter AS paths** -- adding a direct link between two routers creates a shorter AS path that BGP automatically prefers, shifting traffic without manual intervention
 5. **Dynamic routing self-heals** -- link failures trigger automatic rerouting through alternate paths; the same failure that permanently broke static routing in lesson 03 was automatically recovered here
 6. **BGP session states matter** -- Established is the only healthy state; Active and Connect indicate configuration mismatches despite their misleading names
-7. **Route type matters** -- static routes (administrative distance 5) beat BGP routes (170) on SR Linux; failing to remove static routes before enabling BGP will mask the dynamically learned routes
+7. **Administrative distance determines route priority** -- static routes (distance 5) beat BGP routes (170) on SR Linux; stale static routes silently override correct BGP routes, and the diagnostic clue is a received-vs-active route count mismatch
 8. **gNMIc provides model-driven network configuration via gRPC** -- structured JSON payloads targeting YANG paths replace CLI text parsing, making network automation more reliable and programmatic
