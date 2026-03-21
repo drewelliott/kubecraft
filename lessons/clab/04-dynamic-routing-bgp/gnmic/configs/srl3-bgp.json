@@ -20,11 +20,17 @@
         "admin-state": "enable",
         "autonomous-system": 65003,
         "router-id": "10.0.0.3",
+        "afi-safi": [
+          {
+            "afi-safi-name": "ipv4-unicast",
+            "admin-state": "enable"
+          }
+        ],
         "group": [
           {
             "group-name": "ebgp-peers",
             "admin-state": "enable",
-            "export-policy": "export-connected"
+            "export-policy": ["export-connected"]
           }
         ],
         "neighbor": [
