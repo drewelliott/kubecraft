@@ -39,11 +39,11 @@ Complete these exercises to understand how BGP replaces static routes with dynam
    ```bash
    cd gnmic
    gnmic -a clab-dynamic-routing-bgp-srl1:57400 -u admin -p NokiaSrl1! \
-     --skip-verify -e json_ietf set --update-file configs/srl1-bgp.json
+     --skip-verify -e json_ietf set --request-file configs/srl1-bgp.json
    gnmic -a clab-dynamic-routing-bgp-srl2:57400 -u admin -p NokiaSrl1! \
-     --skip-verify -e json_ietf set --update-file configs/srl2-bgp.json
+     --skip-verify -e json_ietf set --request-file configs/srl2-bgp.json
    gnmic -a clab-dynamic-routing-bgp-srl3:57400 -u admin -p NokiaSrl1! \
-     --skip-verify -e json_ietf set --update-file configs/srl3-bgp.json
+     --skip-verify -e json_ietf set --request-file configs/srl3-bgp.json
    ```
 
 7. Verify BGP sessions are established:
@@ -85,17 +85,17 @@ Complete these exercises to understand how BGP replaces static routes with dynam
 2. Configure the srl2-srl3 interfaces:
    ```bash
    gnmic -a clab-dynamic-routing-bgp-srl2:57400 -u admin -p NokiaSrl1! \
-     --skip-verify -e json_ietf set --update-file configs/srl2-new-link.json
+     --skip-verify -e json_ietf set --request-file configs/srl2-new-link.json
    gnmic -a clab-dynamic-routing-bgp-srl3:57400 -u admin -p NokiaSrl1! \
-     --skip-verify -e json_ietf set --update-file configs/srl3-new-link.json
+     --skip-verify -e json_ietf set --request-file configs/srl3-new-link.json
    ```
 
 3. Add BGP neighbors for the new link:
    ```bash
    gnmic -a clab-dynamic-routing-bgp-srl2:57400 -u admin -p NokiaSrl1! \
-     --skip-verify -e json_ietf set --update-file configs/srl2-bgp-srl3.json
+     --skip-verify -e json_ietf set --request-file configs/srl2-bgp-srl3.json
    gnmic -a clab-dynamic-routing-bgp-srl3:57400 -u admin -p NokiaSrl1! \
-     --skip-verify -e json_ietf set --update-file configs/srl3-bgp-srl2.json
+     --skip-verify -e json_ietf set --request-file configs/srl3-bgp-srl2.json
    ```
 
 4. Verify the new BGP session is established:

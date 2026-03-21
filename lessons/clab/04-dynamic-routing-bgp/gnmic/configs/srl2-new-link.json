@@ -1,23 +1,27 @@
-[
-  {
-    "path": "/interface[name=ethernet-1/3]",
-    "value": {
-      "admin-state": "enable",
-      "subinterface": [
-        {
-          "index": 0,
-          "admin-state": "enable",
-          "description": "Link to srl3",
-          "ipv4": {
+{
+  "updates": [
+    {
+      "path": "/interface[name=ethernet-1/3]",
+      "value": {
+        "admin-state": "enable",
+        "subinterface": [
+          {
+            "index": 0,
             "admin-state": "enable",
-            "address": [{"ip-prefix": "10.1.6.1/24"}]
+            "description": "Link to srl3",
+            "ipv4": {
+              "admin-state": "enable",
+              "address": [{"ip-prefix": "10.1.6.1/24"}]
+            }
           }
-        }
-      ]
+        ]
+      },
+      "encoding": "json_ietf"
+    },
+    {
+      "path": "/network-instance[name=default]/interface[name=ethernet-1/3.0]",
+      "value": {},
+      "encoding": "json_ietf"
     }
-  },
-  {
-    "path": "/network-instance[name=default]/interface[name=ethernet-1/3.0]",
-    "value": {}
-  }
-]
+  ]
+}
