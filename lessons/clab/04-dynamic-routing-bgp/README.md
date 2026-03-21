@@ -70,7 +70,7 @@ In Lessons 2-3, we used Ansible with JSON-RPC to configure routers. gNMIc takes 
 /interface[name=ethernet-1/1]/subinterface[index=0]/ipv4/admin-state
 ```
 
-gNMIc uses `set --update-file` to push JSON payloads targeting these paths. The payloads in `gnmic/configs/` contain the exact BGP configuration for each router.
+gNMIc uses `set --request-file` to push JSON payloads targeting these paths. The payloads in `gnmic/configs/` contain the exact BGP configuration for each router.
 
 ### 4. Live Demo -- Static to Dynamic (3 min)
 
@@ -82,9 +82,9 @@ cd lessons/clab/04-dynamic-routing-bgp
 containerlab deploy -t topology/lab.clab.yml
 
 # Apply BGP configuration to all three routers via gNMIc
-gnmic -a clab-dynamic-routing-bgp-srl1:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf set --update-file gnmic/configs/srl1-bgp.json
-gnmic -a clab-dynamic-routing-bgp-srl2:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf set --update-file gnmic/configs/srl2-bgp.json
-gnmic -a clab-dynamic-routing-bgp-srl3:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf set --update-file gnmic/configs/srl3-bgp.json
+gnmic -a clab-dynamic-routing-bgp-srl1:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf set --request-file gnmic/configs/srl1-bgp.json
+gnmic -a clab-dynamic-routing-bgp-srl2:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf set --request-file gnmic/configs/srl2-bgp.json
+gnmic -a clab-dynamic-routing-bgp-srl3:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf set --request-file gnmic/configs/srl3-bgp.json
 ```
 
 Verify BGP sessions are Established:
@@ -107,12 +107,12 @@ Traffic between host2 and host3 currently takes the long path through the hub (s
 
 ```bash
 # Configure the new srl2-srl3 link
-gnmic -a clab-dynamic-routing-bgp-srl2:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf set --update-file gnmic/configs/srl2-new-link.json
-gnmic -a clab-dynamic-routing-bgp-srl3:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf set --update-file gnmic/configs/srl3-new-link.json
+gnmic -a clab-dynamic-routing-bgp-srl2:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf set --request-file gnmic/configs/srl2-new-link.json
+gnmic -a clab-dynamic-routing-bgp-srl3:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf set --request-file gnmic/configs/srl3-new-link.json
 
 # Add BGP peering between srl2 and srl3
-gnmic -a clab-dynamic-routing-bgp-srl2:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf set --update-file gnmic/configs/srl2-bgp-srl3.json
-gnmic -a clab-dynamic-routing-bgp-srl3:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf set --update-file gnmic/configs/srl3-bgp-srl2.json
+gnmic -a clab-dynamic-routing-bgp-srl2:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf set --request-file gnmic/configs/srl2-bgp-srl3.json
+gnmic -a clab-dynamic-routing-bgp-srl3:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf set --request-file gnmic/configs/srl3-bgp-srl2.json
 ```
 
 Now traceroute shows the direct path:
@@ -215,7 +215,7 @@ If you run Kubernetes with Calico CNI, every node is a BGP speaker advertising i
 |---------|---------|
 | `containerlab deploy -t topology/lab.clab.yml` | Deploy the lab |
 | `containerlab destroy -t topology/lab.clab.yml --cleanup` | Destroy the lab |
-| `gnmic -a HOST:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf set --update-file FILE` | Apply config via gNMIc |
+| `gnmic -a HOST:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf set --request-file FILE` | Apply config via gNMIc |
 | `gnmic -a HOST:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf get --path PATH --type state` | Read state via gNMIc |
 | `gnmic -a HOST:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf set --delete PATH` | Delete config via gNMIc |
 | `docker exec -it clab-dynamic-routing-bgp-srl1 sr_cli` | Connect to srl1 CLI |

@@ -163,13 +163,13 @@ docker exec clab-dynamic-routing-bgp-host1 ping -c 2 10.1.4.2
 ```bash
 # Apply BGP config to all three routers
 gnmic -a clab-dynamic-routing-bgp-srl1:57400 -u admin -p NokiaSrl1! \
-  --skip-verify -e json_ietf set --update-file gnmic/configs/srl1-bgp.json
+  --skip-verify -e json_ietf set --request-file gnmic/configs/srl1-bgp.json
 
 gnmic -a clab-dynamic-routing-bgp-srl2:57400 -u admin -p NokiaSrl1! \
-  --skip-verify -e json_ietf set --update-file gnmic/configs/srl2-bgp.json
+  --skip-verify -e json_ietf set --request-file gnmic/configs/srl2-bgp.json
 
 gnmic -a clab-dynamic-routing-bgp-srl3:57400 -u admin -p NokiaSrl1! \
-  --skip-verify -e json_ietf set --update-file gnmic/configs/srl3-bgp.json
+  --skip-verify -e json_ietf set --request-file gnmic/configs/srl3-bgp.json
 ```
 
 > "Three commands, three routers configured. Each payload creates the export policy, the peer-group, and the BGP neighbors. Let's check the sessions."
@@ -215,17 +215,17 @@ docker exec clab-dynamic-routing-bgp-host2 traceroute 10.1.5.2
 ```bash
 # Configure interfaces on the new link
 gnmic -a clab-dynamic-routing-bgp-srl2:57400 -u admin -p NokiaSrl1! \
-  --skip-verify -e json_ietf set --update-file gnmic/configs/srl2-new-link.json
+  --skip-verify -e json_ietf set --request-file gnmic/configs/srl2-new-link.json
 
 gnmic -a clab-dynamic-routing-bgp-srl3:57400 -u admin -p NokiaSrl1! \
-  --skip-verify -e json_ietf set --update-file gnmic/configs/srl3-new-link.json
+  --skip-verify -e json_ietf set --request-file gnmic/configs/srl3-new-link.json
 
 # Add BGP peering between srl2 and srl3
 gnmic -a clab-dynamic-routing-bgp-srl2:57400 -u admin -p NokiaSrl1! \
-  --skip-verify -e json_ietf set --update-file gnmic/configs/srl2-bgp-srl3.json
+  --skip-verify -e json_ietf set --request-file gnmic/configs/srl2-bgp-srl3.json
 
 gnmic -a clab-dynamic-routing-bgp-srl3:57400 -u admin -p NokiaSrl1! \
-  --skip-verify -e json_ietf set --update-file gnmic/configs/srl3-bgp-srl2.json
+  --skip-verify -e json_ietf set --request-file gnmic/configs/srl3-bgp-srl2.json
 ```
 
 > "Four commands: two to bring up the interfaces with IP addresses, two to establish the BGP peering. Let's check the session."
