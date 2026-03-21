@@ -26,14 +26,3 @@ set / interface ethernet-1/3 subinterface 0 description 'Link to srl3'
 set / interface ethernet-1/3 subinterface 0 ipv4 admin-state enable
 set / interface ethernet-1/3 subinterface 0 ipv4 address 10.1.3.1/24
 set / network-instance default interface ethernet-1/3.0
-
-# --- static routes (lesson 03 baseline) ---
-set / network-instance default next-hop-groups group nhg-10-1-4-0-24 admin-state enable
-set / network-instance default next-hop-groups group nhg-10-1-4-0-24 nexthop 1 ip-address 10.1.2.2
-set / network-instance default static-routes route 10.1.4.0/24 admin-state enable
-set / network-instance default static-routes route 10.1.4.0/24 next-hop-group nhg-10-1-4-0-24
-
-set / network-instance default next-hop-groups group nhg-10-1-5-0-24 admin-state enable
-set / network-instance default next-hop-groups group nhg-10-1-5-0-24 nexthop 1 ip-address 10.1.3.2
-set / network-instance default static-routes route 10.1.5.0/24 admin-state enable
-set / network-instance default static-routes route 10.1.5.0/24 next-hop-group nhg-10-1-5-0-24
