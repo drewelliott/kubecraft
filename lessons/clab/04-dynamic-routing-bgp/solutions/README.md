@@ -57,7 +57,7 @@ ethernet-1/3 is physically up (the cable is wired in the topology) but has no su
 
 ```bash
 $ gnmic -a clab-dynamic-routing-bgp-srl1:57400 -u admin -p NokiaSrl1! \
-    --skip-verify -e json_ietf set --update-file configs/srl1-bgp.json
+    --skip-verify -e json_ietf set --request-file configs/srl1-bgp.json
 {
   "time": "2026-03-15T12:01:15Z",
   "results": [
@@ -152,7 +152,7 @@ The path is host2 -> srl2 (10.1.4.1) -> srl1 (10.1.2.1) -> srl3 (10.1.3.2) -> ho
 
 ```bash
 $ gnmic -a clab-dynamic-routing-bgp-srl2:57400 -u admin -p NokiaSrl1! \
-    --skip-verify -e json_ietf set --update-file configs/srl2-new-link.json
+    --skip-verify -e json_ietf set --request-file configs/srl2-new-link.json
 {
   "time": "2026-03-15T12:05:00Z",
   "results": [
@@ -168,7 +168,7 @@ $ gnmic -a clab-dynamic-routing-bgp-srl2:57400 -u admin -p NokiaSrl1! \
 }
 
 $ gnmic -a clab-dynamic-routing-bgp-srl3:57400 -u admin -p NokiaSrl1! \
-    --skip-verify -e json_ietf set --update-file configs/srl3-new-link.json
+    --skip-verify -e json_ietf set --request-file configs/srl3-new-link.json
 {
   "time": "2026-03-15T12:05:05Z",
   "results": [
@@ -188,7 +188,7 @@ $ gnmic -a clab-dynamic-routing-bgp-srl3:57400 -u admin -p NokiaSrl1! \
 
 ```bash
 $ gnmic -a clab-dynamic-routing-bgp-srl2:57400 -u admin -p NokiaSrl1! \
-    --skip-verify -e json_ietf set --update-file configs/srl2-bgp-srl3.json
+    --skip-verify -e json_ietf set --request-file configs/srl2-bgp-srl3.json
 {
   "time": "2026-03-15T12:05:30Z",
   "results": [
@@ -200,7 +200,7 @@ $ gnmic -a clab-dynamic-routing-bgp-srl2:57400 -u admin -p NokiaSrl1! \
 }
 
 $ gnmic -a clab-dynamic-routing-bgp-srl3:57400 -u admin -p NokiaSrl1! \
-    --skip-verify -e json_ietf set --update-file configs/srl3-bgp-srl2.json
+    --skip-verify -e json_ietf set --request-file configs/srl3-bgp-srl2.json
 {
   "time": "2026-03-15T12:05:35Z",
   "results": [
