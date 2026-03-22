@@ -6,7 +6,7 @@ Deploy a CLOS spine-leaf fabric with eBGP underlay, observe ECMP across spines, 
 
 By the end of this lesson, you will be able to:
 
-- [ ] Explain CLOS/spine-leaf architecture and why it replaced traditional hub-and-spoke in data centers
+- [ ] Explain CLOS/spine-leaf architecture and why it replaced full mesh and 3-tier designs in data centers
 - [ ] Deploy a multi-tier fabric topology with containerlab
 - [ ] Configure eBGP underlay using RFC 7938 ASN-per-device model
 - [ ] Use gNMIc to configure and verify BGP across a 6-router fabric
@@ -27,13 +27,13 @@ By the end of this lesson, you will be able to:
 
 ### 1. Why Spine-Leaf? (2 min)
 
-In Lesson 4, our hub-and-spoke topology funneled all traffic through a single hub router. That creates a bottleneck -- the hub becomes a single point of failure and a bandwidth chokepoint. Traditional 3-tier data center networks (core/distribution/access) suffered the same problem, relying on Spanning Tree Protocol to block redundant links and prevent loops.
+In Lesson 4, our 3 routers were fully meshed -- every router peered with every other. That works for 3, but full mesh grows as N*(N-1)/2: 10 devices need 45 links, 50 devices need 1,225. It doesn't scale. Traditional 3-tier data center networks (core/distribution/access) solved the scaling problem but introduced Spanning Tree Protocol, which blocks redundant links to prevent loops.
 
 CLOS spine-leaf architecture eliminates these problems:
 
 | Approach | Bottleneck? | Redundancy | Scaling |
 |----------|-------------|------------|---------|
-| Hub-and-spoke | Yes -- single hub | Single point of failure | Add spokes, hub overloads |
+| Full mesh | No, but link count explodes (N-squared) | Every device directly connected | Doesn't scale past ~10 devices |
 | 3-tier (core/dist/access) | Yes -- spanning tree blocks links | Active/standby paths | Complex, wasteful |
 | CLOS spine-leaf | No -- all paths active (ECMP) | Any spine can fail | Add spines or leaves independently |
 

@@ -34,9 +34,9 @@
 
 > **[VOICEOVER - Terminal visible]**
 >
-> "Last lesson, 3 routers in a triangle. What about 100 servers that all need equal bandwidth to each other? Hub-and-spoke creates a bottleneck at the hub. Today we build the architecture that eliminates that bottleneck -- spine-leaf. This is the topology running under every major cloud provider and every large-scale Kubernetes deployment."
+> "Last lesson, 3 routers in a triangle -- fully meshed, every router peered with every other. That works fine for 3. But what about 50 servers? Full mesh means 1,225 links and 1,225 BGP sessions. It doesn't scale. Today we build the architecture that does -- spine-leaf. This is the topology running under every major cloud provider and every large-scale Kubernetes deployment."
 
-**Visual:** Terminal showing lesson 04 hub-and-spoke topology diagram, then transition to spine-leaf diagram
+**Visual:** Terminal showing lesson 04 triangle topology diagram, then transition to spine-leaf diagram
 
 ---
 
@@ -44,20 +44,20 @@
 
 > **[VOICEOVER]**
 >
-> "In lesson 4, srl1 was the hub. Every packet between srl2 and srl3 had to pass through it. That was fine for 3 routers, but imagine 50 servers. The hub becomes the bottleneck -- its bandwidth limits the entire network.
+> "In lesson 4, our 3 routers were fully meshed -- every router had a direct link to every other router. That's 3 links total. Add a 4th router and you need 6 links. With 10 routers, 45 links. With 50, over 1,200. Full mesh grows as N-squared -- it collapses under its own weight.
 >
 > Traditional data centers solved this with a 3-tier architecture: core, distribution, and access layers. But those designs relied on Spanning Tree Protocol, which blocks redundant links to prevent loops. You pay for redundant cables, then STP disables half of them. Wasteful.
 >
-> CLOS spine-leaf architecture fixes both problems. Every leaf switch connects to every spine switch. There are no leaf-to-leaf or spine-to-spine links. Every path between any two leaves is exactly 2 router hops -- leaf, spine, leaf. And because all paths are equal length, the router can use ECMP -- equal-cost multipath -- to load-balance across all spines simultaneously. No blocked links. No wasted bandwidth.
+> CLOS spine-leaf architecture fixes both problems. Instead of connecting everything to everything, you split the network into two tiers: spines and leaves. Every leaf connects to every spine, but there are no leaf-to-leaf or spine-to-spine links. With 4 leaves and 2 spines, that's only 8 links -- not 15 for a full mesh of 6 devices. Every path between any two leaves is exactly 2 router hops -- leaf, spine, leaf. And because all paths are equal length, the router can use ECMP -- equal-cost multipath -- to load-balance across all spines simultaneously. No blocked links. No wasted bandwidth.
 >
 > The key insight: to add more bandwidth, you add more spines. To add more servers, you add more leaves. Each tier scales independently without redesigning the other."
 
-**Visual:** Three diagrams side by side -- hub-and-spoke (bottleneck highlighted), 3-tier with STP (blocked links in red), CLOS (all links green/active)
+**Visual:** Three diagrams side by side -- full mesh (link explosion highlighted), 3-tier with STP (blocked links in red), CLOS (all links green/active)
 
 **Key Points:**
-- Hub-and-spoke: single bottleneck, single point of failure
+- Full mesh: link count grows as N*(N-1)/2, doesn't scale
 - 3-tier + STP: blocks redundant links, wastes capacity
-- CLOS: all links active via ECMP, tiers scale independently
+- CLOS: structured 2-tier, all links active via ECMP, tiers scale independently
 
 **Transition:** "Let's look at the specific design of our fabric."
 
@@ -71,7 +71,7 @@
 >
 > For BGP, we use the RFC 7938 model: one unique AS number per device. Spines are AS 65100 and 65101. Leaves are AS 65001 through 65004. This means every link is an eBGP session. The spines' peer-group is called 'leaves' with 4 neighbors each. The leaves' peer-group is called 'spines' with 2 neighbors each. Total: 8 unique BGP sessions across the fabric.
 >
-> Why a unique AS per device? It keeps the BGP configuration simple and uniform. Every device has the same structure -- just different AS numbers and neighbor IPs. And it makes AS path the natural metric for path selection: a 2-hop path through one spine has AS path length 2, and there's no shorter alternative. All spine paths are equal, so ECMP kicks in automatically."
+> Why a unique AS per device? It keeps the BGP configuration simple and uniform. Every device has the same structure -- just different AS numbers and neighbor IPs. And it makes AS path the natural metric for path selection: a 2-hop path through one spine has AS path length 2, and there's no shorter alternative. All spine paths are equal cost, which is the prerequisite for ECMP -- though on SR Linux you still need to explicitly enable multipath to get load balancing."
 
 **Visual:** Topology diagram with AS numbers labeled, /31 subnets on links, /24 subnets on host segments
 
@@ -88,7 +88,7 @@
 - /31 point-to-point links between every spine-leaf pair
 - RFC 7938: unique ASN per device, every link is eBGP
 - 8 total BGP sessions (4 leaves x 2 spines)
-- ECMP is automatic because all spine paths have equal AS path length
+- Equal AS path length enables ECMP (with multipath configured)
 
 **Transition:** "Let's deploy this and see it work."
 
@@ -125,7 +125,7 @@ docker exec clab-spine-leaf-bgp-host1 ping -c 2 -W 3 10.20.4.2
 
 > **[VOICEOVER]**
 >
-> "Six gNMIc commands, one per router. Each config file creates the export-connected policy and enables BGP with the correct AS, router-ID, peer-group, and neighbors."
+> "Six gNMIc commands, one per router. Each config file does four things: creates routing policies -- import-all, export-connected with a prefix-set filter for host subnets only, and export-bgp for re-advertising learned routes. It enables the ipv4-unicast address family with multipath for ECMP. And it configures BGP with the correct AS, router-ID, peer-group, and neighbors."
 
 ```bash
 cd gnmic
@@ -237,8 +237,9 @@ exit
 >
 > "Let's recap:
 >
-> - CLOS spine-leaf eliminates the hub bottleneck. Every leaf connects to every spine, creating equal-cost paths across the fabric.
-> - RFC 7938 gives each device a unique AS number. Every link is eBGP, and ECMP across spines happens automatically because all paths have equal AS path length.
+> - CLOS spine-leaf replaces full mesh with a structured 2-tier design that scales. Every leaf connects to every spine, creating equal-cost paths across the fabric.
+> - RFC 7938 gives each device a unique AS number. Every link is eBGP. But ECMP isn't automatic on SR Linux -- you need to set multipath maximum-paths to enable load balancing across spines.
+> - Prefix-set filters keep the routing table clean. Only host subnets belong in BGP -- the /31 fabric links are already known via direct connection.
 > - Spine failures degrade capacity but not connectivity. With 2 spines, you lose 50% bandwidth. With 4 spines, only 25%. The fabric degrades gracefully.
 > - This is the architecture under every major cloud and Kubernetes deployment. When you troubleshoot pod networking, this is what's underneath."
 
@@ -271,7 +272,7 @@ exit
 
 1. CLOS spine-leaf topology diagram with AS numbers and IP addressing
 2. ECMP animation showing traffic hashing across two spines
-3. Side-by-side comparison: hub-and-spoke vs 3-tier vs CLOS
+3. Side-by-side comparison: full mesh vs 3-tier vs CLOS
 4. Spine failure visualization (spine going dark, traffic rerouting through remaining spine)
 5. ECMP routing table transition: 2 next-hops -> 1 next-hop -> 2 next-hops
 
@@ -279,7 +280,7 @@ exit
 
 ## Notes for Editing
 
-- **0:00-0:30** - Hook, overlay lesson 04 hub-and-spoke diagram
+- **0:00-0:30** - Hook, overlay lesson 04 triangle topology diagram
 - **0:30-2:30** - Why spine-leaf, three architecture comparison diagrams
 - **2:30-4:30** - CLOS design, topology diagram with AS numbers and addressing
 - **4:30-6:30** - Deploy fabric, show 10 containers and failed ping (no BGP yet)
