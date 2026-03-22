@@ -1,13 +1,43 @@
 {
   "updates": [
     {
+      "path": "/routing-policy/prefix-set[name=host-subnets]",
+      "value": {
+        "prefix": [
+          {
+            "ip-prefix": "10.20.0.0/16",
+            "mask-length-range": "24..24"
+          }
+        ]
+      }
+    },
+    {
+      "path": "/routing-policy/policy[name=import-all]",
+      "value": {
+        "default-action": { "policy-result": "accept" }
+      }
+    },
+    {
       "path": "/routing-policy/policy[name=export-connected]",
       "value": {
         "default-action": { "policy-result": "reject" },
         "statement": [
           {
             "name": "10",
-            "match": { "protocol": "local" },
+            "match": { "protocol": "local", "prefix-set": "host-subnets" },
+            "action": { "policy-result": "accept" }
+          }
+        ]
+      }
+    },
+    {
+      "path": "/routing-policy/policy[name=export-bgp]",
+      "value": {
+        "default-action": { "policy-result": "reject" },
+        "statement": [
+          {
+            "name": "10",
+            "match": { "protocol": "bgp" },
             "action": { "policy-result": "accept" }
           }
         ]
@@ -19,11 +49,18 @@
         "admin-state": "enable",
         "autonomous-system": 65002,
         "router-id": "10.0.2.2",
+        "afi-safi": [
+          {
+            "afi-safi-name": "ipv4-unicast",
+            "admin-state": "enable"
+          }
+        ],
         "group": [
           {
             "group-name": "spines",
             "admin-state": "enable",
-            "export-policy": ["export-connected"]
+            "export-policy": ["export-connected", "export-bgp"],
+            "import-policy": ["import-all"]
           }
         ],
         "neighbor": [
