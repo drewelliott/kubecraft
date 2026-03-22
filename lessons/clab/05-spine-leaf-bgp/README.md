@@ -1,12 +1,12 @@
 # Lesson 5: Spine-Leaf Networking with BGP
 
-Deploy a CLOS spine-leaf fabric with eBGP underlay, observe ECMP across spines, and test fabric resilience.
+Deploy a Clos spine-leaf fabric with eBGP underlay, observe ECMP across spines, and test fabric resilience.
 
 ## Objectives
 
 By the end of this lesson, you will be able to:
 
-- [ ] Explain CLOS/spine-leaf architecture and why it replaced full mesh and 3-tier designs in data centers
+- [ ] Explain Clos/spine-leaf architecture and why it replaced full mesh and 3-tier designs in data centers
 - [ ] Deploy a multi-tier fabric topology with containerlab
 - [ ] Configure eBGP underlay using RFC 7938 ASN-per-device model
 - [ ] Use gNMIc to configure and verify BGP across a 6-router fabric
@@ -29,17 +29,17 @@ By the end of this lesson, you will be able to:
 
 In Lesson 4, our 3 routers were fully meshed -- every router peered with every other. That works for 3, but full mesh grows as N*(N-1)/2: 10 devices need 45 links, 50 devices need 1,225. It doesn't scale. Traditional 3-tier data center networks (core/distribution/access) solved the scaling problem but introduced Spanning Tree Protocol, which blocks redundant links to prevent loops.
 
-CLOS spine-leaf architecture eliminates these problems:
+Clos spine-leaf architecture eliminates these problems:
 
 | Approach | Bottleneck? | Redundancy | Scaling |
 |----------|-------------|------------|---------|
 | Full mesh | No, but link count explodes (N-squared) | Every device directly connected | Doesn't scale past ~10 devices |
 | 3-tier (core/dist/access) | Yes -- spanning tree blocks links | Active/standby paths | Complex, wasteful |
-| CLOS spine-leaf | No -- all paths active (ECMP) | Any spine can fail | Add spines or leaves independently |
+| Clos spine-leaf | No -- all paths active (ECMP) | Any spine can fail | Add spines or leaves independently |
 
-### 2. CLOS Topology Design (2 min)
+### 2. Clos Topology Design (2 min)
 
-In a CLOS fabric, every leaf connects to every spine. There are no leaf-to-leaf or spine-to-spine links. This creates a predictable, non-oversubscribed network where every leaf-to-leaf path crosses exactly one spine.
+In a Clos fabric, every leaf connects to every spine. There are no leaf-to-leaf or spine-to-spine links. This creates a predictable, non-oversubscribed network where every leaf-to-leaf path crosses exactly one spine.
 
 Key design principles:
 
@@ -198,7 +198,7 @@ SR Linux defaults to a single best path per prefix (`maximum-paths: 1`). To enab
 
 ## Why This Matters for Kubernetes
 
-| CLOS Concept | Kubernetes Equivalent |
+| Clos Concept | Kubernetes Equivalent |
 |---|---|
 | Spine-leaf fabric | Physical underlay for K8s nodes across racks |
 | ECMP across spines | Load balancing across multiple network paths to nodes |
@@ -207,7 +207,7 @@ SR Linux defaults to a single best path per prefix (`maximum-paths: 1`). To enab
 | Leaf as top-of-rack switch | Network boundary for a rack of K8s worker nodes |
 | Horizontal scaling (add leaves) | Adding racks of worker nodes without redesigning the network |
 
-In production Kubernetes clusters, the physical network underneath is almost always a CLOS spine-leaf fabric. Understanding how ECMP, spine failures, and BGP convergence work at this layer helps you troubleshoot connectivity issues that look like "Kubernetes problems" but are actually fabric problems.
+In production Kubernetes clusters, the physical network underneath is almost always a Clos spine-leaf fabric. Understanding how ECMP, spine failures, and BGP convergence work at this layer helps you troubleshoot connectivity issues that look like "Kubernetes problems" but are actually fabric problems.
 
 ## Files in This Lesson
 
@@ -327,4 +327,4 @@ Previous: [Lesson 4: Dynamic Routing with BGP](../04-dynamic-routing-bgp/) | [Co
 - [SR Linux BGP Configuration](https://documentation.nokia.com/srlinux/)
 - [gNMIc Documentation](https://gnmic.openconfig.net/)
 - [Containerlab Topology Reference](https://containerlab.dev/manual/topo-def-file/)
-- [CLOS Network Architecture (Wikipedia)](https://en.wikipedia.org/wiki/Clos_network)
+- [Clos Network Architecture (Wikipedia)](https://en.wikipedia.org/wiki/Clos_network)

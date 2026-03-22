@@ -1,4 +1,4 @@
-# Lesson 5: Spine-Leaf Networking with BGP -- 2-Spine + 4-Leaf CLOS Fabric
+# Lesson 5: Spine-Leaf Networking with BGP -- 2-Spine + 4-Leaf Clos Fabric
 #
 #      spine1 (AS 65100)    spine2 (AS 65101)
 #       / |  \    \          / |   \    \

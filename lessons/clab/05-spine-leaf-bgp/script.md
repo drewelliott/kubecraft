@@ -8,7 +8,7 @@
 | **Title** | Spine-Leaf Networking with BGP |
 | **Duration Target** | 12-14 minutes |
 | **Prerequisites** | Lessons 0-4, gNMIc installed (`gnmic version`), 16 GB RAM |
-| **Learning Objectives** | Explain CLOS architecture, configure eBGP underlay on a 6-router fabric, observe ECMP across spines, diagnose fabric resilience under spine failure |
+| **Learning Objectives** | Explain Clos architecture, configure eBGP underlay on a 6-router fabric, observe ECMP across spines, diagnose fabric resilience under spine failure |
 
 ---
 
@@ -34,7 +34,7 @@
 
 > **[VOICEOVER - Terminal visible]**
 >
-> "Last lesson, 3 routers in a triangle -- fully meshed, every router peered with every other. That works fine for 3. But what about 50 servers? Full mesh means 1,225 links and 1,225 BGP sessions. It doesn't scale. Today we build the architecture that does -- spine-leaf. This is the topology running under every major cloud provider and every large-scale Kubernetes deployment."
+> "Last lesson, you configured BGP on 3 routers and watched them exchange routes. That was the mechanics. Today we use those mechanics to build something real -- a spine-leaf fabric. In a data center, every server needs to reach every other server with predictable latency and maximum bandwidth. Spine-leaf delivers both: equal-cost paths between every pair of racks, all links active, no wasted capacity. This is the topology running under every major cloud provider and every large-scale Kubernetes deployment."
 
 **Visual:** Terminal showing lesson 04 triangle topology diagram, then transition to spine-leaf diagram
 
@@ -48,22 +48,22 @@
 >
 > Traditional data centers solved this with a 3-tier architecture: core, distribution, and access layers. But those designs relied on Spanning Tree Protocol, which blocks redundant links to prevent loops. You pay for redundant cables, then STP disables half of them. Wasteful.
 >
-> CLOS spine-leaf architecture fixes both problems. Instead of connecting everything to everything, you split the network into two tiers: spines and leaves. Every leaf connects to every spine, but there are no leaf-to-leaf or spine-to-spine links. With 4 leaves and 2 spines, that's only 8 links -- not 15 for a full mesh of 6 devices. Every path between any two leaves is exactly 2 router hops -- leaf, spine, leaf. And because all paths are equal length, the router can use ECMP -- equal-cost multipath -- to load-balance across all spines simultaneously. No blocked links. No wasted bandwidth.
+> Clos spine-leaf architecture fixes both problems. Instead of connecting everything to everything, you split the network into two tiers: spines and leaves. Every leaf connects to every spine, but there are no leaf-to-leaf or spine-to-spine links. With 4 leaves and 2 spines, that's only 8 links -- not 15 for a full mesh of 6 devices. Every path between any two leaves is exactly 2 router hops -- leaf, spine, leaf. And because all paths are equal length, the router can use ECMP -- equal-cost multipath -- to load-balance across all spines simultaneously. No blocked links. No wasted bandwidth.
 >
 > The key insight: to add more bandwidth, you add more spines. To add more servers, you add more leaves. Each tier scales independently without redesigning the other."
 
-**Visual:** Three diagrams side by side -- full mesh (link explosion highlighted), 3-tier with STP (blocked links in red), CLOS (all links green/active)
+**Visual:** Three diagrams side by side -- full mesh (link explosion highlighted), 3-tier with STP (blocked links in red), Clos (all links green/active)
 
 **Key Points:**
 - Full mesh: link count grows as N*(N-1)/2, doesn't scale
 - 3-tier + STP: blocks redundant links, wastes capacity
-- CLOS: structured 2-tier, all links active via ECMP, tiers scale independently
+- Clos: structured 2-tier, all links active via ECMP, tiers scale independently
 
 **Transition:** "Let's look at the specific design of our fabric."
 
 ---
 
-### Section 2: CLOS Design (2 minutes)
+### Section 2: Clos Design (2 minutes)
 
 > **[VOICEOVER]**
 >
@@ -237,7 +237,7 @@ exit
 >
 > "Let's recap:
 >
-> - CLOS spine-leaf replaces full mesh with a structured 2-tier design that scales. Every leaf connects to every spine, creating equal-cost paths across the fabric.
+> - Clos spine-leaf replaces full mesh with a structured 2-tier design that scales. Every leaf connects to every spine, creating equal-cost paths across the fabric.
 > - RFC 7938 gives each device a unique AS number. Every link is eBGP. But ECMP isn't automatic on SR Linux -- you need to set multipath maximum-paths to enable load balancing across spines.
 > - Prefix-set filters keep the routing table clean. Only host subnets belong in BGP -- the /31 fabric links are already known via direct connection.
 > - Spine failures degrade capacity but not connectivity. With 2 spines, you lose 50% bandwidth. With 4 spines, only 25%. The fabric degrades gracefully.
@@ -255,7 +255,7 @@ exit
 >
 > Happy labbing!"
 
-**Visual:** Show exercises folder, then CLOS diagram with "EVPN/VXLAN overlay" teaser text
+**Visual:** Show exercises folder, then Clos diagram with "EVPN/VXLAN overlay" teaser text
 
 ---
 
@@ -270,9 +270,9 @@ exit
 
 ## B-Roll / Supplementary Footage Needed
 
-1. CLOS spine-leaf topology diagram with AS numbers and IP addressing
+1. Clos spine-leaf topology diagram with AS numbers and IP addressing
 2. ECMP animation showing traffic hashing across two spines
-3. Side-by-side comparison: full mesh vs 3-tier vs CLOS
+3. Side-by-side comparison: full mesh vs 3-tier vs Clos
 4. Spine failure visualization (spine going dark, traffic rerouting through remaining spine)
 5. ECMP routing table transition: 2 next-hops -> 1 next-hop -> 2 next-hops
 
@@ -282,7 +282,7 @@ exit
 
 - **0:00-0:30** - Hook, overlay lesson 04 triangle topology diagram
 - **0:30-2:30** - Why spine-leaf, three architecture comparison diagrams
-- **2:30-4:30** - CLOS design, topology diagram with AS numbers and addressing
+- **2:30-4:30** - Clos design, topology diagram with AS numbers and addressing
 - **4:30-6:30** - Deploy fabric, show 10 containers and failed ping (no BGP yet)
 - **6:30-9:30** - Configure BGP, verify sessions, show ECMP routing table, cross-leaf pings
 - **9:30-11:30** - Spine failure demo, ping loss/recovery, ECMP path count change, restore

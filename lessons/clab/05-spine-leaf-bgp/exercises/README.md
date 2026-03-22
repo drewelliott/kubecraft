@@ -1,10 +1,10 @@
 # Lesson 5 Exercises: Spine-Leaf BGP Fabric
 
-Complete these exercises to understand how CLOS spine-leaf fabrics provide scalable, resilient data center connectivity using eBGP.
+Complete these exercises to understand how Clos spine-leaf fabrics provide scalable, resilient data center connectivity using eBGP.
 
 ## Exercise 1: Deploy and Configure the Fabric
 
-**Objective:** Deploy the CLOS fabric, configure eBGP on all devices, and verify end-to-end connectivity.
+**Objective:** Deploy the Clos fabric, configure eBGP on all devices, and verify end-to-end connectivity.
 
 ### Steps
 

@@ -121,7 +121,7 @@ PING 10.20.4.2 (10.20.4.2): 56 data bytes
 3 packets transmitted, 3 packets received, 0% packet loss
 ```
 
-Notice TTL=61. Starting TTL is 64, and the packet crosses 3 routers (leaf1 -> spine -> leaf2), so 64 - 3 = 61. This confirms the CLOS path: every cross-leaf packet traverses exactly one spine.
+Notice TTL=61. Starting TTL is 64, and the packet crosses 3 routers (leaf1 -> spine -> leaf2), so 64 - 3 = 61. This confirms the Clos path: every cross-leaf packet traverses exactly one spine.
 
 ---
 
@@ -193,11 +193,11 @@ The path is always 4 hops: host1 -> leaf1 -> spine -> leaf4 -> host4. But the sp
 
 **Step 4: Answers to the questions.**
 
-- **How many hops between any two hosts?** Always 4: host -> leaf -> spine -> leaf -> host. In a CLOS fabric, every leaf-to-leaf path is exactly 2 router hops (leaf-spine-leaf). Adding the host endpoints makes it 4 total hops. This path symmetry is a defining property of CLOS -- no host pair is closer or farther than any other.
+- **How many hops between any two hosts?** Always 4: host -> leaf -> spine -> leaf -> host. In a Clos fabric, every leaf-to-leaf path is exactly 2 router hops (leaf-spine-leaf). Adding the host endpoints makes it 4 total hops. This path symmetry is a defining property of Clos -- no host pair is closer or farther than any other.
 
-- **How many equal-cost paths exist between any two leaves?** 2 -- one through each spine. In a symmetric CLOS fabric, every leaf is exactly 2 hops from every other leaf. Traffic always traverses exactly one spine. With 2 spines, there are always 2 equal-cost paths.
+- **How many equal-cost paths exist between any two leaves?** 2 -- one through each spine. In a symmetric Clos fabric, every leaf is exactly 2 hops from every other leaf. Traffic always traverses exactly one spine. With 2 spines, there are always 2 equal-cost paths.
 
-- **What happens to bandwidth if you add a third spine?** Aggregate bandwidth between any two leaves increases by 50% (from 2 ECMP paths to 3). Each spine provides one additional path. This is the horizontal scaling property of CLOS: adding spines increases bisectional bandwidth without changing the leaf tier. No existing device needs reconfiguration beyond adding a BGP neighbor for the new spine.
+- **What happens to bandwidth if you add a third spine?** Aggregate bandwidth between any two leaves increases by 50% (from 2 ECMP paths to 3). Each spine provides one additional path. This is the horizontal scaling property of Clos: adding spines increases bisectional bandwidth without changing the leaf tier. No existing device needs reconfiguration beyond adding a BGP neighbor for the new spine.
 
 ---
 
@@ -429,10 +429,10 @@ After removing the rogue prefix-set, export policy, static route, and blackhole 
 
 ## Key Takeaways
 
-1. **CLOS spine-leaf architecture eliminates the hub bottleneck** -- every leaf connects to every spine, creating multiple equal-cost paths and removing single points of failure at the spine tier
+1. **Clos spine-leaf architecture eliminates the hub bottleneck** -- every leaf connects to every spine, creating multiple equal-cost paths and removing single points of failure at the spine tier
 2. **ECMP requires explicit multipath configuration** -- SR Linux defaults to `maximum-paths 1` (single best path). You must set `multipath maximum-paths` under the `ipv4-unicast` address family to enable load balancing across spines
 3. **Prefix-set filters keep the routing table clean** -- only host /24 subnets belong in BGP; /31 fabric links are already known via direct connection and don't need to be advertised
 4. **Fabric resilience degrades gracefully** -- losing a spine reduces aggregate bandwidth by 1/N but causes zero connectivity loss after convergence; the remaining spines absorb all traffic
 5. **RFC 7938 eBGP with ASN-per-device is the data center standard** -- each router gets a unique AS number, making every link an eBGP session with simple, uniform configuration across the fabric
-6. **Path symmetry is a CLOS property** -- every host pair is exactly 4 hops apart (host-leaf-spine-leaf-host), regardless of which leaves they connect to; this predictable latency simplifies application design
+6. **Path symmetry is a Clos property** -- every host pair is exactly 4 hops apart (host-leaf-spine-leaf-host), regardless of which leaves they connect to; this predictable latency simplifies application design
 7. **Longest-prefix-match can be weaponized** -- a more-specific prefix hijacks traffic from a less-specific one, which is why production fabrics need strict route filtering and prefix validation
