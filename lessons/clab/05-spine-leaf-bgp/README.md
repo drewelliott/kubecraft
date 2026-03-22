@@ -64,12 +64,14 @@ Startup configs in `topology/configs/` handle base interface IP addressing. gNMI
 
 ```bash
 # Apply BGP configuration to all 6 routers via gNMIc
-gnmic -a clab-spine-leaf-bgp-spine1:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf set --update-file gnmic/configs/spine1-bgp.json
-gnmic -a clab-spine-leaf-bgp-spine2:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf set --update-file gnmic/configs/spine2-bgp.json
-gnmic -a clab-spine-leaf-bgp-leaf1:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf set --update-file gnmic/configs/leaf1-bgp.json
-gnmic -a clab-spine-leaf-bgp-leaf2:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf set --update-file gnmic/configs/leaf2-bgp.json
-gnmic -a clab-spine-leaf-bgp-leaf3:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf set --update-file gnmic/configs/leaf3-bgp.json
-gnmic -a clab-spine-leaf-bgp-leaf4:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf set --update-file gnmic/configs/leaf4-bgp.json
+# Run from the gnmic/ directory so .gnmic.yml provides credentials, encoding, and skip-verify
+cd gnmic
+gnmic -a clab-spine-leaf-bgp-spine1:57400 set --request-file configs/spine1-bgp.json
+gnmic -a clab-spine-leaf-bgp-spine2:57400 set --request-file configs/spine2-bgp.json
+gnmic -a clab-spine-leaf-bgp-leaf1:57400 set --request-file configs/leaf1-bgp.json
+gnmic -a clab-spine-leaf-bgp-leaf2:57400 set --request-file configs/leaf2-bgp.json
+gnmic -a clab-spine-leaf-bgp-leaf3:57400 set --request-file configs/leaf3-bgp.json
+gnmic -a clab-spine-leaf-bgp-leaf4:57400 set --request-file configs/leaf4-bgp.json
 ```
 
 Verify all 8 BGP sessions are Established:
@@ -229,8 +231,8 @@ In production Kubernetes clusters, the physical network underneath is almost alw
 |---------|---------|
 | `containerlab deploy -t topology/lab.clab.yml` | Deploy the lab |
 | `containerlab destroy -t topology/lab.clab.yml --cleanup` | Destroy the lab |
-| `gnmic -a HOST:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf set --update-file FILE` | Apply config via gNMIc |
-| `gnmic -a HOST:57400 -u admin -p NokiaSrl1! --skip-verify -e json_ietf get --path PATH --type state` | Read state via gNMIc |
+| `gnmic -a HOST:57400 set --request-file FILE` | Apply config via gNMIc (from `gnmic/` dir) |
+| `gnmic -a HOST:57400 get --path PATH --type state` | Read state via gNMIc (from `gnmic/` dir) |
 | `docker exec -it clab-spine-leaf-bgp-spine1 sr_cli` | Connect to spine1 CLI |
 | `show network-instance default protocols bgp neighbor` | SR Linux: BGP neighbor summary |
 | `show network-instance default protocols bgp neighbor X detail` | SR Linux: BGP neighbor detail |

@@ -14,21 +14,15 @@ Complete these exercises to understand how CLOS spine-leaf fabrics provide scala
    containerlab deploy -t topology/lab.clab.yml
    ```
 
-2. Apply BGP config to all 6 routers using gNMIc:
+2. Apply BGP config to all 6 routers using gNMIc (run from the `gnmic/` directory so `.gnmic.yml` provides credentials):
    ```bash
    cd gnmic
-   gnmic -a clab-spine-leaf-bgp-spine1:57400 -u admin -p NokiaSrl1! \
-     --skip-verify -e json_ietf set --update-file configs/spine1-bgp.json
-   gnmic -a clab-spine-leaf-bgp-spine2:57400 -u admin -p NokiaSrl1! \
-     --skip-verify -e json_ietf set --update-file configs/spine2-bgp.json
-   gnmic -a clab-spine-leaf-bgp-leaf1:57400 -u admin -p NokiaSrl1! \
-     --skip-verify -e json_ietf set --update-file configs/leaf1-bgp.json
-   gnmic -a clab-spine-leaf-bgp-leaf2:57400 -u admin -p NokiaSrl1! \
-     --skip-verify -e json_ietf set --update-file configs/leaf2-bgp.json
-   gnmic -a clab-spine-leaf-bgp-leaf3:57400 -u admin -p NokiaSrl1! \
-     --skip-verify -e json_ietf set --update-file configs/leaf3-bgp.json
-   gnmic -a clab-spine-leaf-bgp-leaf4:57400 -u admin -p NokiaSrl1! \
-     --skip-verify -e json_ietf set --update-file configs/leaf4-bgp.json
+   gnmic -a clab-spine-leaf-bgp-spine1:57400 set --request-file configs/spine1-bgp.json
+   gnmic -a clab-spine-leaf-bgp-spine2:57400 set --request-file configs/spine2-bgp.json
+   gnmic -a clab-spine-leaf-bgp-leaf1:57400 set --request-file configs/leaf1-bgp.json
+   gnmic -a clab-spine-leaf-bgp-leaf2:57400 set --request-file configs/leaf2-bgp.json
+   gnmic -a clab-spine-leaf-bgp-leaf3:57400 set --request-file configs/leaf3-bgp.json
+   gnmic -a clab-spine-leaf-bgp-leaf4:57400 set --request-file configs/leaf4-bgp.json
    ```
 
 3. Verify all 8 BGP sessions are established:

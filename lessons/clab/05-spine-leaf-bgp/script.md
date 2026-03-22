@@ -129,18 +129,12 @@ docker exec clab-spine-leaf-bgp-host1 ping -c 2 -W 3 10.20.4.2
 
 ```bash
 cd gnmic
-gnmic -a clab-spine-leaf-bgp-spine1:57400 -u admin -p NokiaSrl1! \
-  --skip-verify -e json_ietf set --update-file configs/spine1-bgp.json
-gnmic -a clab-spine-leaf-bgp-spine2:57400 -u admin -p NokiaSrl1! \
-  --skip-verify -e json_ietf set --update-file configs/spine2-bgp.json
-gnmic -a clab-spine-leaf-bgp-leaf1:57400 -u admin -p NokiaSrl1! \
-  --skip-verify -e json_ietf set --update-file configs/leaf1-bgp.json
-gnmic -a clab-spine-leaf-bgp-leaf2:57400 -u admin -p NokiaSrl1! \
-  --skip-verify -e json_ietf set --update-file configs/leaf2-bgp.json
-gnmic -a clab-spine-leaf-bgp-leaf3:57400 -u admin -p NokiaSrl1! \
-  --skip-verify -e json_ietf set --update-file configs/leaf3-bgp.json
-gnmic -a clab-spine-leaf-bgp-leaf4:57400 -u admin -p NokiaSrl1! \
-  --skip-verify -e json_ietf set --update-file configs/leaf4-bgp.json
+gnmic -a clab-spine-leaf-bgp-spine1:57400 set --request-file configs/spine1-bgp.json
+gnmic -a clab-spine-leaf-bgp-spine2:57400 set --request-file configs/spine2-bgp.json
+gnmic -a clab-spine-leaf-bgp-leaf1:57400 set --request-file configs/leaf1-bgp.json
+gnmic -a clab-spine-leaf-bgp-leaf2:57400 set --request-file configs/leaf2-bgp.json
+gnmic -a clab-spine-leaf-bgp-leaf3:57400 set --request-file configs/leaf3-bgp.json
+gnmic -a clab-spine-leaf-bgp-leaf4:57400 set --request-file configs/leaf4-bgp.json
 ```
 
 > "All six applied. Let's check the sessions. I'll start with spine1 -- it should have 4 established sessions, one to each leaf."

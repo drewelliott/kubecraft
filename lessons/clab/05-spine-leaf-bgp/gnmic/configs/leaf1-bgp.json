@@ -1,34 +1,36 @@
-[
-  {
-    "path": "/routing-policy/policy[name=export-connected]",
-    "value": {
-      "default-action": { "policy-result": "reject" },
-      "statement": [
-        {
-          "name": "10",
-          "match": { "protocol": "local" },
-          "action": { "policy-result": "accept" }
-        }
-      ]
+{
+  "updates": [
+    {
+      "path": "/routing-policy/policy[name=export-connected]",
+      "value": {
+        "default-action": { "policy-result": "reject" },
+        "statement": [
+          {
+            "name": "10",
+            "match": { "protocol": "local" },
+            "action": { "policy-result": "accept" }
+          }
+        ]
+      }
+    },
+    {
+      "path": "/network-instance[name=default]/protocols/bgp",
+      "value": {
+        "admin-state": "enable",
+        "autonomous-system": 65001,
+        "router-id": "10.0.2.1",
+        "group": [
+          {
+            "group-name": "spines",
+            "admin-state": "enable",
+            "export-policy": "export-connected"
+          }
+        ],
+        "neighbor": [
+          { "peer-address": "10.10.1.0", "admin-state": "enable", "peer-as": 65100, "peer-group": "spines" },
+          { "peer-address": "10.10.2.0", "admin-state": "enable", "peer-as": 65101, "peer-group": "spines" }
+        ]
+      }
     }
-  },
-  {
-    "path": "/network-instance[name=default]/protocols/bgp",
-    "value": {
-      "admin-state": "enable",
-      "autonomous-system": 65001,
-      "router-id": "10.0.2.1",
-      "group": [
-        {
-          "group-name": "spines",
-          "admin-state": "enable",
-          "export-policy": "export-connected"
-        }
-      ],
-      "neighbor": [
-        { "peer-address": "10.10.1.0", "admin-state": "enable", "peer-as": 65100, "peer-group": "spines" },
-        { "peer-address": "10.10.2.0", "admin-state": "enable", "peer-as": 65101, "peer-group": "spines" }
-      ]
-    }
-  }
-]
+  ]
+}

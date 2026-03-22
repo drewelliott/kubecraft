@@ -17,18 +17,12 @@ Expected output: table showing 10 running containers (2 spines, 4 leaves, 4 host
 
 ```bash
 $ cd gnmic
-$ gnmic -a clab-spine-leaf-bgp-spine1:57400 -u admin -p NokiaSrl1! \
-    --skip-verify -e json_ietf set --update-file configs/spine1-bgp.json
-$ gnmic -a clab-spine-leaf-bgp-spine2:57400 -u admin -p NokiaSrl1! \
-    --skip-verify -e json_ietf set --update-file configs/spine2-bgp.json
-$ gnmic -a clab-spine-leaf-bgp-leaf1:57400 -u admin -p NokiaSrl1! \
-    --skip-verify -e json_ietf set --update-file configs/leaf1-bgp.json
-$ gnmic -a clab-spine-leaf-bgp-leaf2:57400 -u admin -p NokiaSrl1! \
-    --skip-verify -e json_ietf set --update-file configs/leaf2-bgp.json
-$ gnmic -a clab-spine-leaf-bgp-leaf3:57400 -u admin -p NokiaSrl1! \
-    --skip-verify -e json_ietf set --update-file configs/leaf3-bgp.json
-$ gnmic -a clab-spine-leaf-bgp-leaf4:57400 -u admin -p NokiaSrl1! \
-    --skip-verify -e json_ietf set --update-file configs/leaf4-bgp.json
+$ gnmic -a clab-spine-leaf-bgp-spine1:57400 set --request-file configs/spine1-bgp.json
+$ gnmic -a clab-spine-leaf-bgp-spine2:57400 set --request-file configs/spine2-bgp.json
+$ gnmic -a clab-spine-leaf-bgp-leaf1:57400 set --request-file configs/leaf1-bgp.json
+$ gnmic -a clab-spine-leaf-bgp-leaf2:57400 set --request-file configs/leaf2-bgp.json
+$ gnmic -a clab-spine-leaf-bgp-leaf3:57400 set --request-file configs/leaf3-bgp.json
+$ gnmic -a clab-spine-leaf-bgp-leaf4:57400 set --request-file configs/leaf4-bgp.json
 ```
 
 Each config creates the `export-connected` routing policy and enables BGP with the appropriate AS number, peer-group, and neighbors.

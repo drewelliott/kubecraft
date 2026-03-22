@@ -26,25 +26,25 @@ topology:
     leaf1:
       kind: srl
       image: ghcr.io/nokia/srlinux:24.10.1
-      mgmt-ipv4: 172.20.20.1
+      mgmt-ipv4: 172.20.20.10
       startup-config: configs/leaf1-base.cli
 
     leaf2:
       kind: srl
       image: ghcr.io/nokia/srlinux:24.10.1
-      mgmt-ipv4: 172.20.20.2
+      mgmt-ipv4: 172.20.20.20
       startup-config: configs/leaf2-base.cli
 
     leaf3:
       kind: srl
       image: ghcr.io/nokia/srlinux:24.10.1
-      mgmt-ipv4: 172.20.20.3
+      mgmt-ipv4: 172.20.20.30
       startup-config: configs/leaf3-base.cli
 
     leaf4:
       kind: srl
       image: ghcr.io/nokia/srlinux:24.10.1
-      mgmt-ipv4: 172.20.20.4
+      mgmt-ipv4: 172.20.20.40
       startup-config: configs/leaf4-base.cli
 
     host1:

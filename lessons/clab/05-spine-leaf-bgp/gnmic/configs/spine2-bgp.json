@@ -1,36 +1,38 @@
-[
-  {
-    "path": "/routing-policy/policy[name=export-connected]",
-    "value": {
-      "default-action": { "policy-result": "reject" },
-      "statement": [
-        {
-          "name": "10",
-          "match": { "protocol": "local" },
-          "action": { "policy-result": "accept" }
-        }
-      ]
+{
+  "updates": [
+    {
+      "path": "/routing-policy/policy[name=export-connected]",
+      "value": {
+        "default-action": { "policy-result": "reject" },
+        "statement": [
+          {
+            "name": "10",
+            "match": { "protocol": "local" },
+            "action": { "policy-result": "accept" }
+          }
+        ]
+      }
+    },
+    {
+      "path": "/network-instance[name=default]/protocols/bgp",
+      "value": {
+        "admin-state": "enable",
+        "autonomous-system": 65101,
+        "router-id": "10.0.1.2",
+        "group": [
+          {
+            "group-name": "leaves",
+            "admin-state": "enable",
+            "export-policy": "export-connected"
+          }
+        ],
+        "neighbor": [
+          { "peer-address": "10.10.2.1", "admin-state": "enable", "peer-as": 65001, "peer-group": "leaves" },
+          { "peer-address": "10.10.2.3", "admin-state": "enable", "peer-as": 65002, "peer-group": "leaves" },
+          { "peer-address": "10.10.2.5", "admin-state": "enable", "peer-as": 65003, "peer-group": "leaves" },
+          { "peer-address": "10.10.2.7", "admin-state": "enable", "peer-as": 65004, "peer-group": "leaves" }
+        ]
+      }
     }
-  },
-  {
-    "path": "/network-instance[name=default]/protocols/bgp",
-    "value": {
-      "admin-state": "enable",
-      "autonomous-system": 65101,
-      "router-id": "10.0.1.2",
-      "group": [
-        {
-          "group-name": "leaves",
-          "admin-state": "enable",
-          "export-policy": "export-connected"
-        }
-      ],
-      "neighbor": [
-        { "peer-address": "10.10.2.1", "admin-state": "enable", "peer-as": 65001, "peer-group": "leaves" },
-        { "peer-address": "10.10.2.3", "admin-state": "enable", "peer-as": 65002, "peer-group": "leaves" },
-        { "peer-address": "10.10.2.5", "admin-state": "enable", "peer-as": 65003, "peer-group": "leaves" },
-        { "peer-address": "10.10.2.7", "admin-state": "enable", "peer-as": 65004, "peer-group": "leaves" }
-      ]
-    }
-  }
-]
+  ]
+}
