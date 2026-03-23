@@ -29,6 +29,7 @@ Complete these exercises to understand how Clos spine-leaf fabrics provide scala
    - **Routing policies:** `import-all`, `export-connected`, and `export-bgp` -- why does a default-deny NOS like SR Linux need all three?
    - **Prefix-set filter:** `host-subnets` on `export-connected` -- what does `10.20.0.0/16 mask-length-range 24..24` match, and what does it exclude?
    - **Multipath:** `maximum-paths: 2` under `afi-safi ipv4-unicast` -- what is the SR Linux default, and why does ECMP require changing it?
+   - **Shared spine ASN:** Why do both spine neighbors have the same peer-as (65000)? What does RFC 7938 say about spine ASN assignment?
 
 4. Verify all 8 BGP sessions are established:
    ```bash
@@ -237,7 +238,7 @@ docker exec clab-spine-leaf-bgp-host3 ping -c 3 -W 5 10.20.4.2
    delete / routing-policy policy export-hijack
    delete / network-instance default static-routes route 10.20.4.0/25
    delete / network-instance default next-hop-groups group nhg-blackhole
-   set / network-instance default protocols bgp group spines export-policy [export-connected]
+   set / network-instance default protocols bgp group spines export-policy [export-connected export-bgp]
    commit now
    exit
    ```
