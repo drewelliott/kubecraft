@@ -43,10 +43,10 @@ A:leaf1# show network-instance default protocols bgp neighbor
 | Peer          | Group  | AS     | Admin     | Session| Rcv    | Active |
 |               |        |        | State     | State  | Routes | Routes |
 +===============+========+========+===========+========+========+========+
-| 10.10.1.0     |spines  | 65100  | enable    |establis| 3      | 3      |
+| 10.10.1.0     |spines  | 65000  | enable    |establis| 3      | 3      |
 |               |        |        |           | hed    |        |        |
 +---------------+--------+--------+-----------+--------+--------+--------+
-| 10.10.2.0     |spines  | 65101  | enable    |establis| 3      | 3      |
+| 10.10.2.0     |spines  | 65000  | enable    |establis| 3      | 3      |
 |               |        |        |           | hed    |        |        |
 +---------------+--------+--------+-----------+--------+--------+--------+
 ```
@@ -284,10 +284,10 @@ A:leaf1# show network-instance default protocols bgp neighbor
 | Peer          | Group  | AS     | Admin     | Session| Rcv    | Active |
 |               |        |        | State     | State  | Routes | Routes |
 +===============+========+========+===========+========+========+========+
-| 10.10.1.0     |spines  | 65100  | enable    |active  | 0      | 0      |
+| 10.10.1.0     |spines  | 65000  | enable    |active  | 0      | 0      |
 |               |        |        |           |        |        |        |
 +---------------+--------+--------+-----------+--------+--------+--------+
-| 10.10.2.0     |spines  | 65101  | enable    |establis| 6      | 3      |
+| 10.10.2.0     |spines  | 65000  | enable    |establis| 6      | 3      |
 |               |        |        |           | hed    |        |        |
 +---------------+--------+--------+-----------+--------+--------+--------+
 ```
@@ -395,7 +395,7 @@ delete / routing-policy prefix-set hijack
 delete / routing-policy policy export-hijack
 delete / network-instance default static-routes route 10.20.4.0/25
 delete / network-instance default next-hop-groups group nhg-blackhole
-set / network-instance default protocols bgp group spines export-policy [export-connected]
+set / network-instance default protocols bgp group spines export-policy [export-connected export-bgp]
 commit now
 ```
 
@@ -433,6 +433,6 @@ After removing the rogue prefix-set, export policy, static route, and blackhole 
 2. **ECMP requires explicit multipath configuration** -- SR Linux defaults to `maximum-paths 1` (single best path). You must set `multipath maximum-paths` under the `ipv4-unicast` address family to enable load balancing across spines
 3. **Prefix-set filters keep the routing table clean** -- only host /24 subnets belong in BGP; /31 fabric links are already known via direct connection and don't need to be advertised
 4. **Fabric resilience degrades gracefully** -- losing a spine reduces aggregate bandwidth by 1/N but causes zero connectivity loss after convergence; the remaining spines absorb all traffic
-5. **RFC 7938 eBGP with ASN-per-device is the data center standard** -- each router gets a unique AS number, making every link an eBGP session with simple, uniform configuration across the fabric
+5. **RFC 7938 eBGP is the data center standard** -- spines share a single ASN, each leaf gets its own, and every spine-leaf link is eBGP
 6. **Path symmetry is a Clos property** -- every host pair is exactly 4 hops apart (host-leaf-spine-leaf-host), regardless of which leaves they connect to; this predictable latency simplifies application design
 7. **Longest-prefix-match can be weaponized** -- a more-specific prefix hijacks traffic from a less-specific one, which is why production fabrics need strict route filtering and prefix validation
